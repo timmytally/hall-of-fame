@@ -1,0 +1,173 @@
+:root{
+  --bg: #1a1f2e;
+  --card: #0f1724;
+  --text: #e6eef8;
+  --muted: #9fb0c8;
+  --accent: linear-gradient(90deg,#ff8a00,#e52e71);
+  --accent-color: #ff6a00;
+  --glass: rgba(255,255,255,0.03);
+}
+
+/* Light theme overrides */
+:root.light{
+  --bg: #f6fbff;
+  --card: #ffffff;
+  --text: #0b1a2b;
+  --muted: #49627a;
+  --accent-color: #0072ff;
+  --glass: rgba(10,20,30,0.03);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(0,198,255,0.06), transparent), var(--bg);
+  color:var(--text); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+}
+body[data-page="home"]{
+  background-image: linear-gradient(135deg, rgba(26,31,46,0.92), rgba(15,23,36,0.94)), url('images/efootball backkground.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+.container{max-width:1000px;margin:2rem auto;padding:1rem}
+.home-main{padding-top:1rem}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0.6rem 1rem;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);backdrop-filter: blur(6px);border-bottom:1px solid rgba(255,255,255,0.03)}
+.logo-wrap{display:flex;align-items:center;gap:0.75rem}
+.brand .group-name{font-weight:700}
+.brand .group-sub{font-size:0.85rem;color:var(--muted)}
+.nav{display:flex;align-items:center;gap:0.5rem}
+.nav-link{color:var(--text);text-decoration:none;padding:0.4rem 0.6rem;border-radius:6px}
+.nav-link:hover{background:var(--glass)}
+.btn{cursor:pointer;border:0;padding:0.55rem 0.9rem;border-radius:8px;background:transparent;color:var(--text)}
+.btn.primary{background:var(--accent);color:#fff;font-weight:700;box-shadow:0 6px 18px rgba(229,46,113,0.12)}
+.btn.ghost{border:1px solid rgba(255,255,255,0.06)}
+.btn.small{padding:0.35rem 0.6rem;font-size:0.9rem}
+.btn.large{padding:0.7rem 1.4rem;font-size:1rem;border-radius:10px}
+.theme-btn{font-size:1.1rem}
+.hero-card{display:grid;grid-template-columns:120px 1fr;gap:1rem;align-items:center;padding:1.2rem;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 6px 30px rgba(2,6,23,0.5)}
+.logo-placeholder{display:flex;align-items:center;justify-content:center}
+.hero-right h1{margin:0 0 0.4rem 0}
+.hero-right p{margin:0 0 1rem 0;color:var(--muted)}
+.actions{display:flex;gap:0.6rem}
+
+/* Home page hero */
+.hero-section{
+  position:relative;
+  text-align:center;
+  padding:3rem 0;
+  margin-bottom:2rem;
+  border-radius:12px;
+  overflow:hidden;
+  /* background handled by an absolutely positioned <img.hero-bg> for reliable rendering */
+  background-image: none;
+}
+.hero-section::before{
+  content:'';
+  position:absolute;inset:0;z-index:0;
+  /* Soft dark overlay (Option A) for legibility */
+  background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25));
+  pointer-events:none;
+}
+.hero-content{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:1rem}
+.hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:1}
+.hero-icon{display:flex;justify-content:center;margin-bottom:1rem}
+.hero-section h1{margin:0 0 0.5rem 0;font-size:2.2rem;color:#ffffff;background:#ff8a00;padding:0.8rem 1.2rem;border-radius:8px;display:inline-block;font-weight:700}
+.hero-subtitle{color:var(--muted);font-size:1.1rem;margin:0 0 1.5rem 0;max-width:700px;margin-left:auto;margin-right:auto}
+.hero-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+
+/* Stats section */
+.stats-section{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin:2rem 0;padding:1.5rem;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))}
+.stat-card{text-align:center;padding:1rem}
+.stat-number{font-size:2.2rem;font-weight:700;background:var(--accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.5rem}
+.stat-label{color:var(--muted);font-size:0.95rem}
+
+/* Features section */
+.features-section{margin:3rem 0;padding:2rem 0}
+.features-section h2{text-align:center;margin:0 0 1.5rem 0;font-size:1.8rem}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.2rem;margin-bottom:2rem}
+.feature-card{padding:1.5rem;border-radius:12px;background:var(--card);border:1px solid rgba(255,255,255,0.03);transition:transform .24s ease,box-shadow .2s ease}
+.feature-card:hover{transform:translateY(-6px);box-shadow:0 10px 30px rgba(2,6,23,0.5)}
+.feature-icon{font-size:2.5rem;margin-bottom:0.8rem}
+.feature-card h3{margin:0 0 0.5rem 0;font-size:1.1rem}
+.feature-card p{margin:0;color:var(--muted);font-size:0.95rem}
+
+/* CTA section */
+.cta-section{text-align:center;padding:2rem;border-radius:12px;background:linear-gradient(90deg,rgba(255,138,0,0.1),rgba(229,46,113,0.1));border:1px solid rgba(255,255,255,0.05);margin:2rem 0}
+.cta-section h2{margin:0 0 0.5rem 0;font-size:1.6rem}
+.cta-section p{color:var(--muted);margin:0 0 1.5rem 0;font-size:1rem}
+.muted{color:var(--muted)}
+.footer{padding:1rem;text-align:center;color:var(--muted)}
+.small{font-size:0.85rem}
+
+/* Winners */
+.controls{display:flex;gap:1rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.search{flex:1;padding:0.6rem 0.8rem;border-radius:10px;border:0;background:var(--card);color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,0.02)}
+#tournament-filter{flex:0 1 200px;padding:0.6rem 0.8rem;border-radius:10px;border:0;background:var(--card);color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,0.02);cursor:pointer}
+.winners-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem}
+.card{display:flex;gap:1rem;padding:1rem;border-radius:12px;background:var(--card);border:1px solid rgba(255,255,255,0.03);align-items:flex-start}
+.card-left{flex-shrink:0}
+.avatar-container{position:relative;width:90px;height:90px;display:flex;align-items:center;justify-content:center}
+.avatar{width:90px;height:90px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,0.05);aspect-ratio:1/1;background:rgba(255,255,255,0.02)}
+.award-badge{position:absolute;width:48px;height:48px;bottom:-6px;right:-6px;border-radius:50%;border:3px solid var(--card);object-fit:contain;background:rgba(255,255,255,0.1);padding:4px;box-shadow:0 4px 12px rgba(0,0,0,0.4)}
+.card-body{flex:1;min-width:0}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:0.8rem;margin-bottom:0.6rem}
+.player-info{flex:1}
+.player-name{margin:0;font-weight:700;font-size:1rem;color:var(--text)}
+.rank-badge{background:linear-gradient(90deg,#ffd54a,#ff6a00);color:#000;padding:0.3rem 0.7rem;border-radius:999px;font-weight:700;font-size:0.85rem;white-space:nowrap}
+.tournament{font-size:0.9rem;color:var(--muted);margin-top:0.4rem;display:block}
+.score-date{font-size:0.85rem;color:var(--muted);margin-top:0.3rem;display:block}
+.card-actions{margin-top:0.8rem}
+
+/* Admin */
+.admin-card{max-width:720px;margin-top:1rem;padding:1rem;border-radius:12px;background:var(--card);border:1px solid rgba(255,255,255,0.03)}
+.admin-tabs{display:flex;gap:0.5rem;margin-bottom:1rem}
+.tab-btn{padding:0.6rem 1rem;border-radius:10px;border:0;background:rgba(255,255,255,0.03);color:var(--text);cursor:pointer;transition:background .2s}
+.tab-btn.active{background:var(--accent);color:#fff;font-weight:700}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.manage-controls{margin-bottom:1rem}
+.winners-manage-list{display:flex;flex-direction:column;gap:0.8rem}
+.manage-winner-row{display:flex;justify-content:space-between;align-items:center;padding:0.8rem;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+.winner-info{flex:1}
+.winner-name{font-weight:700;font-size:0.95rem;color:var(--text)}
+.winner-detail{font-size:0.85rem;color:var(--muted);margin-top:0.3rem}
+.winner-actions{display:flex;gap:0.5rem}
+.btn.danger{background:#dc2626;color:#fff}
+.btn.danger:hover{background:#b91c1c}
+
+@media (max-width:700px){
+  .hero-card{grid-template-columns:1fr; text-align:center}
+  .logo-placeholder{margin:0 auto}
+  .nav{gap:0.25rem}
+}
+
+/* small animations */
+.winner-card{transform-origin:center;transition:transform .24s ease, box-shadow .2s ease}
+.winner-card:hover{transform:translateY(-6px);box-shadow:0 10px 30px rgba(2,6,23,0.5)}
+
+/* rank color variations */
+.rank-1{background:linear-gradient(90deg,#ffd54a,#ff8a00);}
+.rank-2{background:linear-gradient(90deg,#c0cbd1,#9aa7b4);}
+.rank-3{background:linear-gradient(90deg,#c89bff,#7a5cff);}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999}
+.modal-content{background:var(--card);border-radius:12px;padding:1.5rem;max-width:500px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.modal-header h3{margin:0}
+.modal-close{background:none;border:none;font-size:1.5rem;color:var(--text);cursor:pointer}
+.modal-close:hover{color:var(--accent-color)}
+
+/* tournaments view */
+.tournaments-section{margin-top:2rem}
+.tournaments-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}
+.tournament-card{display:block;padding:1.2rem;border-radius:12px;background:var(--card);border:1px solid rgba(255,255,255,0.03);transition:transform .24s ease}
+.tournament-card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(2,6,23,0.5)}
+.tournament-header{margin-bottom:0.8rem}
+.tournament-name{margin:0;font-size:1.1rem;font-weight:700}
+.tournament-date{font-size:0.85rem;color:var(--muted);margin-top:0.2rem}
+.tournament-winners{display:flex;flex-direction:column;gap:0.5rem}
+.tournament-winner-mini{padding:0.6rem;background:rgba(255,255,255,0.02);border-radius:8px;font-size:0.9rem}
+.tournament-winner-rank{font-weight:700;color:var(--accent-color)}

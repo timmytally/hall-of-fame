@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Winners Hall — WA E-Football</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="winners">
+  <header class="topbar">
+    <div class="logo-wrap">
+      <div class="brand">
+        <div class="group-name">WA E-Football Gees</div>
+        <div class="group-sub">Winners Hall of Fame</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="winners.html" class="nav-link">Winners Hall</a>
+      <a href="admin.html" class="nav-link nav-admin">Admin</a>
+      <button id="theme-toggle" class="btn theme-btn" aria-label="Toggle theme">🌙</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="controls">
+      <input id="search" class="search" type="search" placeholder="Search player or tournament..." aria-label="Search winners">
+      <select id="tournament-filter" class="search">
+        <option value="">All Tournaments</option>
+      </select>
+      <div class="sort-note muted">Showing latest tournaments first</div>
+      <div class="share-site-wrap">
+        <button id="share-site" class="btn small">Share Site to WhatsApp</button>
+      </div>
+    </section>
+
+    <section id="winners-list" class="winners-grid" aria-live="polite"></section>
+
+    <section id="tournaments-view" class="tournaments-section" style="display:none;">
+      <h2>Tournaments</h2>
+      <div id="tournaments-list" class="tournaments-grid" aria-live="polite"></div>
+    </section>
+
+    <template id="winner-card-tpl">
+      <article class="card winner-card">
+        <div class="card-left">
+          <div class="avatar-container">
+            <img class="avatar" alt="Player photo">
+            <img class="award-badge" alt="Award" style="display:none;">
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div class="player-info">
+              <h3 class="player-name"></h3>
+              <div class="tournament"></div>
+              <div class="score-date"></div>
+            </div>
+            <div class="rank-badge"></div>
+          </div>
+          <div class="card-actions">
+            <button class="btn small share-btn">Share</button>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <template id="tournament-card-tpl">
+      <article class="card tournament-card">
+        <div class="tournament-header">
+          <h3 class="tournament-name"></h3>
+          <div class="tournament-date"></div>
+        </div>
+        <div class="tournament-winners" style="margin-top:1rem;"></div>
+        <button class="btn small view-tournament-btn" style="margin-top:0.8rem;">View All Winners</button>
+      </article>
+    </template>
+  </main>
+
+  <footer class="footer small muted">Built for the WhatsApp E-Football community.</footer>
+  <script src="js/app.js"></script>
+</body>
+</html>

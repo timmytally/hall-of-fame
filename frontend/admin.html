@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — Add Winner</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="admin">
+  <header class="topbar">
+    <div class="logo-wrap">
+      <div class="brand">
+        <div class="group-name">WA E-Football Squad</div>
+        <div class="group-sub">Admin — Add Winner</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="winners.html" class="nav-link">Winners Hall</a>
+      <a href="admin.html" class="nav-link nav-admin">Admin</a>
+      <button id="theme-toggle" class="btn theme-btn" aria-label="Toggle theme">🌙</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div class="admin-tabs">
+      <button class="tab-btn active" data-tab="add">Add Winner</button>
+      <button class="tab-btn" data-tab="manage">Manage Winners</button>
+    </div>
+
+    <!-- Add Winner Tab -->
+    <div id="add-tab" class="tab-content active admin-card">
+      <h2>Add Winner</h2>
+      <form id="winner-form" class="form">
+        <label>Name <input name="name" required></label>
+        <label>WhatsApp Number <input name="wa" placeholder="+1234567890"></label>
+        <label>Tournament Title <input name="title" required></label>
+        <label>Rank <select name="rank">
+          <option value="1">1st</option>
+          <option value="2">2nd</option>
+          <option value="3">3rd</option>
+          <option value="other">Other</option>
+        </select></label>
+        <label>Score/Result <input name="score"></label>
+        <label>Date <input name="date" type="date" required></label>
+        <label>Upload Photo <input name="photo" type="file" accept="image/*"></label>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary">Add Winner</button>
+          <a href="winners.html" class="btn ghost">View Winners</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Manage Winners Tab -->
+    <div id="manage-tab" class="tab-content admin-card">
+      <h2>Manage Winners</h2>
+      <div class="manage-controls">
+        <input id="manage-search" class="search" type="search" placeholder="Search winners..." aria-label="Search">
+      </div>
+      <div id="winners-manage-list" class="winners-manage-list" aria-live="polite"></div>
+      <template id="manage-winner-tpl">
+        <div class="manage-winner-row">
+          <div class="winner-info">
+            <div class="winner-name"></div>
+            <div class="winner-detail"></div>
+          </div>
+          <div class="winner-actions">
+            <button class="btn small edit-btn">Edit</button>
+            <button class="btn small danger">Delete</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Edit Winner</h3>
+          <button class="modal-close">&times;</button>
+        </div>
+        <form id="edit-form" class="form">
+          <input type="hidden" name="id">
+          <label>Name <input name="name" required></label>
+          <label>WhatsApp Number <input name="wa"></label>
+          <label>Tournament Title <input name="title" required></label>
+          <label>Rank <select name="rank">
+            <option value="1">1st</option>
+            <option value="2">2nd</option>
+            <option value="3">3rd</option>
+            <option value="other">Other</option>
+          </select></label>
+          <label>Score/Result <input name="score"></label>
+          <label>Date <input name="date" type="date" required></label>
+          <label>Upload New Photo (optional) <input name="photo" type="file" accept="image/*"></label>
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Save Changes</button>
+            <button type="button" class="btn ghost modal-cancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer small muted">Admin note: default client-side password is required on first load.</footer>
+  <script src="js/app.js"></script>
+</body>
+</html>
