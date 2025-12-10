@@ -141,6 +141,9 @@ app.use('/uploads', express.static('uploads'));
 // Winners storage (memory-based for Vercel)
 let winners = [];
 
+// Users can create accounts and manage their own admins later
+// No admin whitelist - everyone starts as regular user
+
 // --------------------
 // Auth (Google OAuth)
 // --------------------
@@ -164,7 +167,10 @@ passport.use(new GoogleStrategy({
       email,
       name: profile.displayName,
       picture: profile.photos && profile.photos[0] ? profile.photos[0].value : '',
-      role: 'admin',
+      role: 'user',  // Everyone starts as regular user
+      followers: [],  // People who follow this user
+      following: [],  // People this user follows
+      admins: [],     // Admins granted by this user
       createdAt: Date.now()
     };
     users.push(user);
@@ -431,6 +437,118 @@ app.delete('/api/winners/:id', requireAdmin, (req, res) => {
 // Public winners route - no authentication required
 app.get('/public/winners', (req, res) => {
   res.json({ success: true, winners });
+});
+
+// --------------------  
+// Social Features
+// --------------------
+
+// Follow a user
+app.post('/api/users/:email/follow', requireAuth, (req, res) => {
+  const targetEmail = req.params.email;
+  const currentUser = req.user;
+  
+  if (currentUser.email === targetEmail) {
+    return res.status(400).json({ success: false, message: 'Cannot follow yourself' });
+  }
+  
+  const users = readUsers();
+  const targetUser = users.find(u => u.email === targetEmail);
+  const userIndex = users.findIndex(u => u.email === currentUser.email);
+  
+  if (!targetUser) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+  
+  // Add to following list
+  if (!users[userIndex].following.includes(targetEmail)) {
+    users[userIndex].following.push(targetEmail);
+  }
+  
+  // Add to target's followers list
+  if (!targetUser.followers.includes(currentUser.email)) {
+    targetUser.followers.push(currentUser.email);
+  }
+  
+  writeUsers(users);
+  res.json({ success: true });
+});
+
+// Unfollow a user
+app.post('/api/users/:email/unfollow', requireAuth, (req, res) => {
+  const targetEmail = req.params.email;
+  const currentUser = req.user;
+  
+  const users = readUsers();
+  const targetUser = users.find(u => u.email === targetEmail);
+  const userIndex = users.findIndex(u => u.email === currentUser.email);
+  
+  if (!targetUser) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+  
+  // Remove from following list
+  users[userIndex].following = users[userIndex].following.filter(email => email !== targetEmail);
+  
+  // Remove from target's followers list
+  targetUser.followers = targetUser.followers.filter(email => email !== currentUser.email);
+  
+  writeUsers(users);
+  res.json({ success: true });
+});
+
+// Grant admin access to a follower
+app.post('/api/users/:email/grant-admin', requireAuth, (req, res) => {
+  const targetEmail = req.params.email;
+  const currentUser = req.user;
+  
+  // Only account owners can grant admin access
+  if (currentUser.role !== 'user') {
+    return res.status(403).json({ success: false, message: 'Only account owners can grant admin access' });
+  }
+  
+  const users = readUsers();
+  const targetUser = users.find(u => u.email === targetEmail);
+  
+  if (!targetUser) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+  
+  // Check if target user follows current user
+  if (!currentUser.followers.includes(targetEmail)) {
+    return res.status(403).json({ success: false, message: 'Can only grant admin to followers' });
+  }
+  
+  // Grant admin access
+  targetUser.role = 'admin';
+  currentUser.admins.push(targetEmail);
+  
+  writeUsers(users);
+  res.json({ success: true });
+});
+
+// Get user profile with followers/following
+app.get('/api/users/:email', requireAuth, (req, res) => {
+  const targetEmail = req.params.email;
+  const users = readUsers();
+  const user = users.find(u => u.email === targetEmail);
+  
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+  
+  res.json({
+    success: true,
+    user: {
+      email: user.email,
+      name: user.name,
+      picture: user.picture,
+      followers: user.followers,
+      following: user.following,
+      admins: user.admins,
+      createdAt: user.createdAt
+    }
+  });
 });
 
 app.listen(PORT, () => console.log(`Backend running at http://localhost:${PORT}`));
