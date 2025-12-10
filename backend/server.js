@@ -67,11 +67,10 @@ app.put('/api/profile', requireAuth, upload.single('avatar'), (req, res) => {
   });
 });
 
-// Users store (file-based)
-const USERS_FILE = 'users.json';
-if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
-function readUsers(){ return JSON.parse(fs.readFileSync(USERS_FILE)); }
-function writeUsers(arr){ fs.writeFileSync(USERS_FILE, JSON.stringify(arr, null, 2)); }
+// Users store (memory-based for Vercel)
+let users = [];
+function readUsers(){ return users; }
+function writeUsers(arr){ users = arr; }
 
 function findUserByEmail(email){
   const users = readUsers();
@@ -139,9 +138,8 @@ app.use(express.static('../frontend'));
 // Serve uploads directory
 app.use('/uploads', express.static('uploads'));
 
-// Winners storage
-const WINNERS_FILE = 'winners.json';
-if (!fs.existsSync(WINNERS_FILE)) fs.writeFileSync(WINNERS_FILE, '[]');
+// Winners storage (memory-based for Vercel)
+let winners = [];
 
 // --------------------
 // Auth (Google OAuth)
@@ -393,13 +391,11 @@ app.post('/api/password/reset', async (req, res) => {
 
 // Get all winners
 app.get('/api/winners', (req, res) => {
-  const winners = JSON.parse(fs.readFileSync(WINNERS_FILE));
   res.json(winners);
 });
 
 // Add winner
 app.post('/api/winners', requireAdmin, upload.single('photo'), (req, res) => {
-  const winners = JSON.parse(fs.readFileSync(WINNERS_FILE));
   const id = Date.now();
   const winner = {
     id,
@@ -412,12 +408,10 @@ app.post('/api/winners', requireAdmin, upload.single('photo'), (req, res) => {
     photo: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : ''
   };
   winners.push(winner);
-  fs.writeFileSync(WINNERS_FILE, JSON.stringify(winners, null, 2));
   res.json({ success: true, winner });
 });
 
 app.put('/api/winners/:id', requireAdmin, upload.single('photo'), (req, res) => {
-  const winners = JSON.parse(fs.readFileSync(WINNERS_FILE));
   const idx = winners.findIndex(w => w.id == req.params.id);
   if (idx === -1) return res.status(404).json({ success: false, message: 'Winner not found' });
   const winner = winners[idx];
@@ -425,26 +419,18 @@ app.put('/api/winners/:id', requireAdmin, upload.single('photo'), (req, res) => 
   if (req.file) {
     winner.photo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
   }
-  fs.writeFileSync(WINNERS_FILE, JSON.stringify(winners, null, 2));
   res.json({ success: true, winner });
 });
 
 // Delete winner
 app.delete('/api/winners/:id', requireAdmin, (req, res) => {
-  let winners = JSON.parse(fs.readFileSync(WINNERS_FILE));
   winners = winners.filter(w => w.id != req.params.id);
-  fs.writeFileSync(WINNERS_FILE, JSON.stringify(winners, null, 2));
   res.json({ success: true });
 });
 
 // Public winners route - no authentication required
 app.get('/public/winners', (req, res) => {
-  try {
-    const winners = JSON.parse(fs.readFileSync(WINNERS_FILE));
-    res.json({ success: true, winners });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to load winners' });
-  }
+  res.json({ success: true, winners });
 });
 
 app.listen(PORT, () => console.log(`Backend running at http://localhost:${PORT}`));
