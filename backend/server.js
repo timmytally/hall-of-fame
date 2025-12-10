@@ -1,18 +1,33 @@
-import express from 'express';
-import cors from 'cors';
-import multer from 'multer';
-import fs from 'fs';
-import session from 'express-session';
-import path from 'path';
-import dotenv from 'dotenv';
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
-import FileStoreFactory from 'session-file-store';
-dotenv.config();
+const express = require('express');
+const cors = require('cors');
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { MongoClient } = require('mongodb');
+require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+// MongoDB connection
+let db;
+let usersCollection;
+let winnersCollection;
+
+async function connectToMongoDB() {
+  try {
+    const client = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27017/hall-of-fame');
+    await client.connect();
+    db = client.db();
+    usersCollection = db.collection('users');
+    winnersCollection = db.collection('winners');
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+  }
+}
 
 // File upload config - use memory storage for Vercel
 const storage = multer.memoryStorage();
@@ -67,20 +82,26 @@ app.put('/api/profile', requireAuth, upload.single('avatar'), (req, res) => {
   });
 });
 
-// Users store (memory-based for Vercel)
-let users = [];
-function readUsers(){ return users; }
-function writeUsers(arr){ users = arr; }
-
-function findUserByEmail(email){
-  const users = readUsers();
-  return users.find(u => (u.email||'').toLowerCase() === (email||'').toLowerCase()) || null;
+// User functions using MongoDB
+async function findUserByEmail(email){
+  if (!usersCollection) return null;
+  return await usersCollection.findOne({ 
+    email: { $regex: new RegExp('^' + email + '$', 'i') }
+  });
 }
-function saveUser(user){
-  const users = readUsers();
-  const i = users.findIndex(u => u.email === user.email);
-  if(i>=0) users[i] = user; else users.push(user);
-  writeUsers(users);
+
+async function saveUser(user){
+  if (!usersCollection) return;
+  await usersCollection.replaceOne(
+    { email: user.email },
+    user,
+    { upsert: true }
+  );
+}
+
+async function readUsers(){
+  if (!usersCollection) return [];
+  return await usersCollection.find({}).toArray();
 }
 
 function randomToken(){
@@ -120,73 +141,76 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Passport serialization
-passport.serializeUser((user, done) => {
-  console.log('Serializing user:', user.email);
-  done(null, user.email);
-});
-
-passport.deserializeUser((email, done) => {
-  console.log('Deserializing user:', email);
-  const user = findUserByEmail(email);
-  done(null, user);
-});
-
 // Serve frontend static files
 app.use(express.static('../frontend'));
 
 // Serve uploads directory
 app.use('/uploads', express.static('uploads'));
 
-// Winners storage (memory-based for Vercel) - user-specific
-let userWinners = {}; // { userEmail: [winners] }
+// Winners storage using MongoDB
+async function getUserWinners(userEmail) {
+  if (!winnersCollection) return [];
+  const result = await winnersCollection.find({ userEmail }).toArray();
+  return result.map(w => ({ ...w, _id: undefined }));
+}
 
-// Users can create accounts and manage their own admins later
-// No admin whitelist - everyone starts as regular user
+async function saveWinner(userEmail, winner) {
+  if (!winnersCollection) return;
+  await winnersCollection.insertOne({ ...winner, userEmail });
+}
 
-// --------------------
-// Auth (Google OAuth)
-// --------------------
-passport.serializeUser((user, done) => done(null, user.email));
-passport.deserializeUser((email, done) => {
-  const user = readUsers().find(u => u.email === email) || null;
-  done(null, user);
-});
+async function updateWinner(winnerId, winner) {
+  if (!winnersCollection) return;
+  await winnersCollection.updateOne(
+    { id: parseInt(winnerId) },
+    { $set: winner }
+  );
+}
+
+async function deleteWinner(winnerId) {
+  if (!winnersCollection) return;
+  await winnersCollection.deleteOne({ id: parseInt(winnerId) });
+}
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID || '',
   clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback',
-}, (accessToken, refreshToken, profile, done) => {
-  const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
-  if (!email) return done(null, false);
-  const users = readUsers();
-  let user = users.find(u => u.email === email);
-  if (!user) {
-    // Generate username from email or name
-    const baseUsername = profile.displayName.toLowerCase().replace(/\s+/g, '') || email.split('@')[0];
-    const username = baseUsername + Date.now().toString().slice(-4); // Add random to make unique
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+    if (!email) return done(null, false);
     
-    user = {
-      email,
-      name: profile.displayName,
-      username: username,
-      picture: profile.photos && profile.photos[0] ? profile.photos[0].value : '',
-      role: 'user',  // Everyone starts as regular user
-      followers: [],  // People who follow this user
-      following: [],  // People this user follows
-      admins: [],     // Admins granted by this user
-      createdAt: Date.now()
-    };
-    users.push(user);
-    writeUsers(users);
-  } else if (!user.username) {
-    // Add username to existing users who don't have one
-    const baseUsername = user.name ? user.name.toLowerCase().replace(/\s+/g, '') : user.email.split('@')[0];
-    user.username = baseUsername + Date.now().toString().slice(-4);
-    writeUsers(users);
+    let user = await findUserByEmail(email);
+    
+    if (!user) {
+      // Generate username from email or name
+      const baseUsername = profile.displayName.toLowerCase().replace(/\s+/g, '') || email.split('@')[0];
+      const username = baseUsername + Date.now().toString().slice(-4); // Add random to make unique
+      
+      user = {
+        email,
+        name: profile.displayName,
+        username: username,
+        picture: profile.photos && profile.photos[0] ? profile.photos[0].value : '',
+        role: 'user',  // Everyone starts as regular user
+        followers: [],  // People who follow this user
+        following: [],  // People this user follows
+        admins: [],     // Admins granted by this user
+        createdAt: Date.now()
+      };
+      await saveUser(user);
+    } else if (!user.username) {
+      // Add username to existing users who don't have one
+      const baseUsername = user.name ? user.name.toLowerCase().replace(/\s+/g, '') : user.email.split('@')[0];
+      user.username = baseUsername + Date.now().toString().slice(-4);
+      await saveUser(user);
+    }
+    
+    return done(null, user);
+  } catch (error) {
+    return done(error, null);
   }
-  return done(null, user);
 }));
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -406,70 +430,91 @@ app.post('/api/password/reset', async (req, res) => {
 // --------------------
 
 // Get all winners for current user
-app.get('/api/winners', requireAuth, (req, res) => {
-  const userEmail = req.user.email;
-  if (!userWinners[userEmail]) {
-    userWinners[userEmail] = [];
+app.get('/api/winners', requireAuth, async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const winners = await getUserWinners(userEmail);
+    res.json(winners);
+  } catch (error) {
+    console.error('Error getting winners:', error);
+    res.status(500).json({ success: false, message: 'Failed to load winners' });
   }
-  res.json(userWinners[userEmail]);
 });
 
 // Add winner
-app.post('/api/winners', requireAuth, upload.single('photo'), (req, res) => {
-  const userEmail = req.user.email;
-  if (!userWinners[userEmail]) {
-    userWinners[userEmail] = [];
+app.post('/api/winners', requireAuth, upload.single('photo'), async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const id = Date.now();
+    const winner = {
+      id,
+      name: req.body.name,
+      wa: req.body.wa,
+      title: req.body.title,
+      rank: req.body.rank,
+      score: req.body.score,
+      date: req.body.date,
+      photo: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : ''
+    };
+    await saveWinner(userEmail, winner);
+    res.json({ success: true, winner });
+  } catch (error) {
+    console.error('Error adding winner:', error);
+    res.status(500).json({ success: false, message: 'Failed to add winner' });
   }
-  
-  const id = Date.now();
-  const winner = {
-    id,
-    name: req.body.name,
-    wa: req.body.wa,
-    title: req.body.title,
-    rank: req.body.rank,
-    score: req.body.score,
-    date: req.body.date,
-    photo: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : ''
-  };
-  userWinners[userEmail].push(winner);
-  res.json({ success: true, winner });
 });
 
-app.put('/api/winners/:id', requireAuth, upload.single('photo'), (req, res) => {
-  const userEmail = req.user.email;
-  if (!userWinners[userEmail]) {
-    return res.status(404).json({ success: false, message: 'No winners found for user' });
+app.put('/api/winners/:id', requireAuth, upload.single('photo'), async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const winnerId = req.params.id;
+    
+    const winner = {
+      name: req.body.name,
+      wa: req.body.wa,
+      title: req.body.title,
+      rank: req.body.rank,
+      score: req.body.score,
+      date: req.body.date,
+    };
+    
+    if (req.file) {
+      winner.photo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    }
+    
+    await updateWinner(winnerId, winner);
+    res.json({ success: true, winner });
+  } catch (error) {
+    console.error('Error updating winner:', error);
+    res.status(500).json({ success: false, message: 'Failed to update winner' });
   }
-  
-  const idx = userWinners[userEmail].findIndex(w => w.id == req.params.id);
-  if (idx === -1) return res.status(404).json({ success: false, message: 'Winner not found' });
-  const winner = userWinners[userEmail][idx];
-  Object.assign(winner, req.body);
-  if (req.file) {
-    winner.photo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-  }
-  res.json({ success: true, winner });
 });
 
 // Delete winner
-app.delete('/api/winners/:id', requireAuth, (req, res) => {
-  const userEmail = req.user.email;
-  if (!userWinners[userEmail]) {
-    return res.status(404).json({ success: false, message: 'No winners found for user' });
+app.delete('/api/winners/:id', requireAuth, async (req, res) => {
+  try {
+    const winnerId = req.params.id;
+    await deleteWinner(winnerId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting winner:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete winner' });
   }
-  
-  userWinners[userEmail] = userWinners[userEmail].filter(w => w.id != req.params.id);
-  res.json({ success: true });
 });
 
 // Public winners route - no authentication required (for shareable links)
-app.get('/public/winners', (req, res) => {
-  // Get user from query param for shareable links
-  const userEmail = req.query.user;
-  if (userEmail && userWinners[userEmail]) {
-    res.json({ success: true, winners: userWinners[userEmail] });
-  } else {
+app.get('/public/winners', async (req, res) => {
+  try {
+    // Get user from query param for shareable links
+    const userEmail = req.query.user;
+    if (userEmail) {
+      const winners = await getUserWinners(userEmail);
+      res.json({ success: true, winners });
+    } else {
+      res.json({ success: true, winners: [] });
+    }
+  } catch (error) {
+    console.error('Error getting public winners:', error);
     res.json({ success: true, winners: [] });
   }
 });
@@ -479,164 +524,198 @@ app.get('/public/winners', (req, res) => {
 // --------------------
 
 // List all users (for discovery)
-app.get('/api/users', requireAuth, (req, res) => {
-  const users = readUsers();
-  // Return basic user info without sensitive data
-  const publicUsers = users.map(u => ({
-    email: u.email,
-    name: u.name,
-    picture: u.picture,
-    followers: u.followers || [],
-    following: u.following || [],
-    createdAt: u.createdAt
-  }));
-  res.json({ success: true, users: publicUsers });
+app.get('/api/users', requireAuth, async (req, res) => {
+  try {
+    const users = await readUsers();
+    // Return basic user info without sensitive data
+    const publicUsers = users.map(u => ({
+      email: u.email,
+      name: u.name,
+      username: u.username,
+      picture: u.picture,
+      followers: u.followers || [],
+      following: u.following || [],
+      createdAt: u.createdAt
+    }));
+    res.json({ success: true, users: publicUsers });
+  } catch (error) {
+    console.error('Error getting users:', error);
+    res.status(500).json({ success: false, message: 'Failed to load users' });
+  }
 });
 
 // Follow a user
-app.post('/api/users/:email/follow', requireAuth, (req, res) => {
-  const targetEmail = req.params.email;
-  const currentUser = req.user;
-  
-  console.log('Follow request:', { targetEmail, currentUser: currentUser.email });
-  
-  if (currentUser.email === targetEmail) {
-    return res.status(400).json({ success: false, message: 'Cannot follow yourself' });
+app.post('/api/users/:email/follow', requireAuth, async (req, res) => {
+  try {
+    const targetEmail = req.params.email;
+    const currentUser = req.user;
+    
+    console.log('Follow request:', { targetEmail, currentUser: currentUser.email });
+    
+    if (currentUser.email === targetEmail) {
+      return res.status(400).json({ success: false, message: 'Cannot follow yourself' });
+    }
+    
+    const targetUser = await findUserByEmail(targetEmail);
+    const current = await findUserByEmail(currentUser.email);
+    
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User not found: ' + targetEmail });
+    }
+    
+    if (!current) {
+      return res.status(404).json({ success: false, message: 'Current user not found' });
+    }
+    
+    // Initialize arrays if they don't exist
+    if (!current.following) current.following = [];
+    if (!targetUser.followers) targetUser.followers = [];
+    
+    // Add to following list
+    if (!current.following.includes(targetEmail)) {
+      current.following.push(targetEmail);
+    }
+    
+    // Add to target's followers list
+    if (!targetUser.followers.includes(currentUser.email)) {
+      targetUser.followers.push(currentUser.email);
+    }
+    
+    await saveUser(current);
+    await saveUser(targetUser);
+    res.json({ success: true, message: `Now following ${targetEmail}` });
+  } catch (error) {
+    console.error('Error following user:', error);
+    res.status(500).json({ success: false, message: 'Failed to follow user' });
   }
-  
-  const users = readUsers();
-  const targetUser = users.find(u => u.email === targetEmail);
-  const userIndex = users.findIndex(u => u.email === currentUser.email);
-  
-  console.log('Target user found:', !!targetUser, 'User index:', userIndex);
-  
-  if (!targetUser) {
-    return res.status(404).json({ success: false, message: 'User not found: ' + targetEmail });
-  }
-  
-  if (userIndex === -1) {
-    return res.status(404).json({ success: false, message: 'Current user not found' });
-  }
-  
-  // Initialize arrays if they don't exist
-  if (!users[userIndex].following) users[userIndex].following = [];
-  if (!targetUser.followers) targetUser.followers = [];
-  
-  // Add to following list
-  if (!users[userIndex].following.includes(targetEmail)) {
-    users[userIndex].following.push(targetEmail);
-  }
-  
-  // Add to target's followers list
-  if (!targetUser.followers.includes(currentUser.email)) {
-    targetUser.followers.push(currentUser.email);
-  }
-  
-  writeUsers(users);
-  res.json({ success: true, message: `Now following ${targetEmail}` });
 });
 
 // Unfollow a user
-app.post('/api/users/:email/unfollow', requireAuth, (req, res) => {
-  const targetEmail = req.params.email;
-  const currentUser = req.user;
-  
-  const users = readUsers();
-  const targetUser = users.find(u => u.email === targetEmail);
-  const userIndex = users.findIndex(u => u.email === currentUser.email);
-  
-  if (!targetUser) {
-    return res.status(404).json({ success: false, message: 'User not found' });
+app.post('/api/users/:email/unfollow', requireAuth, async (req, res) => {
+  try {
+    const targetEmail = req.params.email;
+    const currentUser = req.user;
+    
+    const targetUser = await findUserByEmail(targetEmail);
+    const current = await findUserByEmail(currentUser.email);
+    
+    if (!targetUser || !current) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    // Remove from following list
+    current.following = current.following.filter(email => email !== targetEmail);
+    
+    // Remove from target's followers list
+    targetUser.followers = targetUser.followers.filter(email => email !== currentUser.email);
+    
+    await saveUser(current);
+    await saveUser(targetUser);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error unfollowing user:', error);
+    res.status(500).json({ success: false, message: 'Failed to unfollow user' });
   }
-  
-  // Remove from following list
-  users[userIndex].following = users[userIndex].following.filter(email => email !== targetEmail);
-  
-  // Remove from target's followers list
-  targetUser.followers = targetUser.followers.filter(email => email !== currentUser.email);
-  
-  writeUsers(users);
-  res.json({ success: true });
 });
 
 // Grant admin access to a follower
-app.post('/api/users/:email/grant-admin', requireAuth, (req, res) => {
-  const targetEmail = req.params.email;
-  const currentUser = req.user;
-  
-  // Only account owners can grant admin access
-  if (currentUser.role !== 'user') {
-    return res.status(403).json({ success: false, message: 'Only account owners can grant admin access' });
+app.post('/api/users/:email/grant-admin', requireAuth, async (req, res) => {
+  try {
+    const targetEmail = req.params.email;
+    const currentUser = req.user;
+    
+    // Only account owners can grant admin access
+    if (currentUser.role !== 'user') {
+      return res.status(403).json({ success: false, message: 'Only account owners can grant admin access' });
+    }
+    
+    const targetUser = await findUserByEmail(targetEmail);
+    const current = await findUserByEmail(currentUser.email);
+    
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    // Check if target user follows current user
+    if (!current.followers.includes(targetEmail)) {
+      return res.status(403).json({ success: false, message: 'Can only grant admin to followers' });
+    }
+    
+    // Grant admin access
+    targetUser.role = 'admin';
+    current.admins.push(targetEmail);
+    
+    await saveUser(targetUser);
+    await saveUser(current);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error granting admin:', error);
+    res.status(500).json({ success: false, message: 'Failed to grant admin' });
   }
-  
-  const users = readUsers();
-  const targetUser = users.find(u => u.email === targetEmail);
-  
-  if (!targetUser) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
-  
-  // Check if target user follows current user
-  if (!currentUser.followers.includes(targetEmail)) {
-    return res.status(403).json({ success: false, message: 'Can only grant admin to followers' });
-  }
-  
-  // Grant admin access
-  targetUser.role = 'admin';
-  currentUser.admins.push(targetEmail);
-  
-  writeUsers(users);
-  res.json({ success: true });
 });
 
 // Get user profile with followers/following
-app.get('/api/users/:email', requireAuth, (req, res) => {
-  const targetEmail = req.params.email;
-  const users = readUsers();
-  const user = users.find(u => u.email === targetEmail);
+app.get('/api/users/:email', requireAuth, async (req, res) => {
+  try {
+    const targetEmail = req.params.email;
+    const user = await findUserByEmail(targetEmail);
 
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
-
-  res.json({
-    success: true,
-    user: {
-      email: user.email,
-      name: user.name,
-      username: user.username,
-      picture: user.picture,
-      followers: user.followers,
-      following: user.following,
-      admins: user.admins,
-      createdAt: user.createdAt
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-  });
+
+    res.json({
+      success: true,
+      user: {
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        picture: user.picture,
+        followers: user.followers,
+        following: user.following,
+        admins: user.admins,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    res.status(500).json({ success: false, message: 'Failed to load user profile' });
+  }
 });
 
 // Find user by username
-app.get('/api/user/by-username/:username', (req, res) => {
-  const username = req.params.username;
-  const users = readUsers();
-  const user = users.find(u => u.username === username);
+app.get('/api/user/by-username/:username', async (req, res) => {
+  try {
+    const username = req.params.username;
+    const users = await readUsers();
+    const user = users.find(u => u.username === username);
 
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
-
-  res.json({
-    success: true,
-    user: {
-      email: user.email,
-      name: user.name,
-      username: user.username,
-      picture: user.picture,
-      followers: user.followers,
-      following: user.following,
-      admins: user.admins,
-      createdAt: user.createdAt
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-  });
+
+    res.json({
+      success: true,
+      user: {
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        picture: user.picture,
+        followers: user.followers,
+        following: user.following,
+        admins: user.admins,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error finding user by username:', error);
+    res.status(500).json({ success: false, message: 'Failed to find user' });
+  }
 });
 
-app.listen(PORT, () => console.log(`Backend running at http://localhost:${PORT}`));
+// Start server with MongoDB connection
+connectToMongoDB().then(() => {
+  app.listen(PORT, () => console.log(`Backend running at http://localhost:${PORT}`));
+}).catch(error => {
+  console.error('Failed to start server:', error);
+});
