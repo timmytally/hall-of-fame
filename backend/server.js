@@ -97,7 +97,10 @@ async function sendMail(to, subject, html){
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['https://hall-of-fame-git-main-timmytallys-projects.vercel.app/'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Ensure sessions directory exists for FileStore
