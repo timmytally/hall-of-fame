@@ -138,8 +138,8 @@ app.use(express.static('../frontend'));
 // Serve uploads directory
 app.use('/uploads', express.static('uploads'));
 
-// Winners storage (memory-based for Vercel)
-let winners = [];
+// Winners storage (memory-based for Vercel) - user-specific
+let userWinners = {}; // { userEmail: [winners] }
 
 // Users can create accounts and manage their own admins later
 // No admin whitelist - everyone starts as regular user
@@ -395,13 +395,22 @@ app.post('/api/password/reset', async (req, res) => {
 // Winners CRUD
 // --------------------
 
-// Get all winners
-app.get('/api/winners', (req, res) => {
-  res.json(winners);
+// Get all winners for current user
+app.get('/api/winners', requireAuth, (req, res) => {
+  const userEmail = req.user.email;
+  if (!userWinners[userEmail]) {
+    userWinners[userEmail] = [];
+  }
+  res.json(userWinners[userEmail]);
 });
 
 // Add winner
-app.post('/api/winners', requireAdmin, upload.single('photo'), (req, res) => {
+app.post('/api/winners', requireAuth, upload.single('photo'), (req, res) => {
+  const userEmail = req.user.email;
+  if (!userWinners[userEmail]) {
+    userWinners[userEmail] = [];
+  }
+  
   const id = Date.now();
   const winner = {
     id,
@@ -413,14 +422,19 @@ app.post('/api/winners', requireAdmin, upload.single('photo'), (req, res) => {
     date: req.body.date,
     photo: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : ''
   };
-  winners.push(winner);
+  userWinners[userEmail].push(winner);
   res.json({ success: true, winner });
 });
 
-app.put('/api/winners/:id', requireAdmin, upload.single('photo'), (req, res) => {
-  const idx = winners.findIndex(w => w.id == req.params.id);
+app.put('/api/winners/:id', requireAuth, upload.single('photo'), (req, res) => {
+  const userEmail = req.user.email;
+  if (!userWinners[userEmail]) {
+    return res.status(404).json({ success: false, message: 'No winners found for user' });
+  }
+  
+  const idx = userWinners[userEmail].findIndex(w => w.id == req.params.id);
   if (idx === -1) return res.status(404).json({ success: false, message: 'Winner not found' });
-  const winner = winners[idx];
+  const winner = userWinners[userEmail][idx];
   Object.assign(winner, req.body);
   if (req.file) {
     winner.photo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
@@ -429,14 +443,25 @@ app.put('/api/winners/:id', requireAdmin, upload.single('photo'), (req, res) => 
 });
 
 // Delete winner
-app.delete('/api/winners/:id', requireAdmin, (req, res) => {
-  winners = winners.filter(w => w.id != req.params.id);
+app.delete('/api/winners/:id', requireAuth, (req, res) => {
+  const userEmail = req.user.email;
+  if (!userWinners[userEmail]) {
+    return res.status(404).json({ success: false, message: 'No winners found for user' });
+  }
+  
+  userWinners[userEmail] = userWinners[userEmail].filter(w => w.id != req.params.id);
   res.json({ success: true });
 });
 
-// Public winners route - no authentication required
+// Public winners route - no authentication required (for shareable links)
 app.get('/public/winners', (req, res) => {
-  res.json({ success: true, winners });
+  // Get user from query param for shareable links
+  const userEmail = req.query.user;
+  if (userEmail && userWinners[userEmail]) {
+    res.json({ success: true, winners: userWinners[userEmail] });
+  } else {
+    res.json({ success: true, winners: [] });
+  }
 });
 
 // --------------------  
