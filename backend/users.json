@@ -1,0 +1,35 @@
+[
+  {
+    "email": "timmytally1@gmail.com",
+    "name": "Timmy _ Tally",
+    "picture": "/uploads/4ce6cf79b5cb1dbeda819266eab86e5a",
+    "role": "admin",
+    "createdAt": 1765223212353
+  },
+  {
+    "email": "timmytally09@gmail.com",
+    "name": "timo",
+    "passwordHash": "$2b$10$iPAHfkEHWetM1Y6cc4MMkOWy/UcXc2bOO6Ct1Ut3I8IGgNoByb.0G",
+    "provider": "local",
+    "emailVerified": true,
+    "verifyToken": null,
+    "resetToken": null,
+    "resetExpires": null,
+    "role": "admin",
+    "picture": "",
+    "createdAt": 1765233070896
+  },
+  {
+    "email": "okeritimothy@gmail.com",
+    "name": "Timo",
+    "passwordHash": "$2b$10$uMQB5nK.oDLBawXyp.e1JuAiav2EW016fjpEJfq3XdOP.2OqNQCWW",
+    "provider": "local",
+    "emailVerified": true,
+    "verifyToken": null,
+    "resetToken": null,
+    "resetExpires": null,
+    "role": "admin",
+    "picture": "",
+    "createdAt": 1765366603070
+  }
+]

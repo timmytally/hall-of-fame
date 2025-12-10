@@ -18,17 +18,27 @@
       <a href="index.html" class="nav-link">Home</a>
       <a href="winners.html" class="nav-link">Winners Hall</a>
       <a href="admin.html" class="nav-link nav-admin">Admin</a>
+      <div id="nav-profile" class="nav-profile" style="display:none; align-items:center; gap:8px; margin-left:8px;">
+  <img id="nav-avatar" alt="avatar" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
+  <span id="nav-name" class="muted" style="font-size:0.9rem;"></span>
+  <button id="nav-logout" class="btn small ghost">Logout</button>
+</div>
+      <button id="nav-login" class="btn primary">Sign In / Sign Up</button>
       <button id="theme-toggle" class="btn theme-btn" aria-label="Toggle theme">🌙</button>
     </nav>
   </header>
 
   <main class="container">
+        <div id="admin-guest" class="admin-card" style="display:none; margin-bottom:1rem;">
+      <h2>Admin Login Required</h2>
+      <p class="muted">Please sign in to manage tournament winners.</p>
+      <a href="auth.html" class="btn primary">Sign In / Sign Up</a>
+    </div>
     <div class="admin-tabs">
       <button class="tab-btn active" data-tab="add">Add Winner</button>
       <button class="tab-btn" data-tab="manage">Manage Winners</button>
     </div>
-
-    <!-- Add Winner Tab -->
+            <!-- Add Winner Tab -->
     <div id="add-tab" class="tab-content active admin-card">
       <h2>Add Winner</h2>
       <form id="winner-form" class="form">
@@ -57,6 +67,7 @@
       <h2>Manage Winners</h2>
       <div class="manage-controls">
         <input id="manage-search" class="search" type="search" placeholder="Search winners..." aria-label="Search">
+        <button id="generate-share-link" class="btn small">Generate Shareable Link</button>
       </div>
       <div id="winners-manage-list" class="winners-manage-list" aria-live="polite"></div>
       <template id="manage-winner-tpl">
@@ -103,7 +114,29 @@
     </div>
   </main>
 
-  <footer class="footer small muted">Admin note: default client-side password is required on first load.</footer>
+  <footer class="footer small muted">Admin note: Sign in to manage tournament winners.</footer>
   <script src="js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const r = await fetch('/api/me', { credentials: 'include' });
+        const me = await r.json();
+        console.log('Auth check result:', me);
+        if (!me || !me.isAdmin) {
+          console.log('Not admin or not logged in');
+          const guest = document.getElementById('admin-guest');
+          if (guest) guest.style.display = 'block';
+        } else {
+          console.log('Admin authenticated, hiding guest message');
+          const guest = document.getElementById('admin-guest');
+          if (guest) guest.style.display = 'none';
+        }
+      } catch (e) {
+        console.log('Auth check failed:', e);
+        const guest = document.getElementById('admin-guest');
+        if (guest) guest.style.display = 'block';
+      }
+    });
+  </script>
 </body>
 </html>

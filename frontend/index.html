@@ -18,12 +18,19 @@
       <a href="index.html" class="nav-link">Home</a>
       <a href="winners.html" class="nav-link">Winners Hall</a>
       <a href="admin.html" class="nav-link nav-admin">Admin</a>
+      <div id="nav-profile" class="nav-profile" style="display:flex; align-items:center; gap:8px; margin-left:8px;">
+        <img id="nav-avatar" alt="avatar" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
+        <span id="nav-name" class="muted" style="font-size:0.9rem;">Guest User</span>
+        <a id="nav-login" href="auth.html" class="btn small primary">Sign Up / Login</a>
+      </div>
       <button id="theme-toggle" class="btn theme-btn" aria-label="Toggle theme">🌙</button>
+      <button id="settings-btn" class="btn theme-btn" aria-label="Settings">⚙️</button>
     </nav>
   </header>
 
   <main class="container home-main">
-    <!-- Hero Section -->
+      
+      <!-- Hero Section -->
     <section class="hero-section">
       <img class="hero-bg" src="images/efootball%20backkground.png" alt="background">
       <div class="hero-content">
@@ -76,12 +83,58 @@
     </section>
 
     <!-- CTA Section -->
-    <section class="cta-section">
+    <section id="cta-section" class="cta-section">
       <h2>Ready to Start?</h2>
       <p>Add your tournament winners and share the glory!</p>
       <a class="btn primary large" href="admin.html">Create Your First Winner</a>
     </section>
   </main>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Profile Section -->
+        <div id="settings-profile" class="settings-section">
+          <h3>Profile</h3>
+          <div id="profile-view" class="profile-display">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+              <img id="settings-avatar" alt="avatar" style="width:64px;height:64px;border-radius:50%;object-fit:cover;">
+              <div>
+                <div id="settings-name" style="font-weight:600; font-size:1.1rem;"></div>
+                <div id="settings-email" class="muted" style="font-size:0.9rem;"></div>
+              </div>
+            </div>
+            <button id="profile-edit-btn" class="btn small">Edit Profile</button>
+            <button id="profile-logout" class="btn small ghost">Logout</button>
+          </div>
+          
+          <div id="profile-edit" style="display:none;">
+            <form id="profile-form" style="display:flex; flex-direction:column; gap:12px;">
+              <label>
+                Display Name
+                <input name="name" type="text" style="width:100%;">
+              </label>
+              <label>
+                Profile Picture
+                <input name="avatar" type="file" accept="image/*" style="width:100%;">
+              </label>
+              <div style="display:flex; gap:8px;">
+                <button type="submit" class="btn small primary">Save</button>
+                <button type="button" id="profile-cancel-btn" class="btn small ghost">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+        <!-- Future settings sections can be added here -->
+      </div>
+    </div>
+  </div>
 
   <footer class="footer">
     <div>Made for the WhatsApp E-Football community</div>

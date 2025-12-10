@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reset Password - WhatsApp E-Football Tournament</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .reset-container {
+      max-width: 400px;
+      margin: 80px auto;
+      padding: 32px;
+      background: var(--card-bg, #1a1a1a);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .brand {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      color: var(--text, #fff);
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border, #333);
+      border-radius: 6px;
+      background: var(--bg, #000);
+      color: var(--text, #fff);
+      font-size: 14px;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent, #4da3ff);
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn.primary {
+      background: var(--accent, #4da3ff);
+      color: white;
+    }
+    .btn.primary:hover {
+      background: var(--accent-hover, #3a8bc7);
+    }
+    .btn.full {
+      width: 100%;
+    }
+    .error {
+      color: #ff6b6b;
+      font-size: 14px;
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(255,107,107,0.1);
+      border-radius: 4px;
+      display: none;
+    }
+    .success {
+      color: #51cf66;
+      font-size: 14px;
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(81,207,102,0.1);
+      border-radius: 4px;
+      display: none;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 16px;
+    }
+    .back-link a {
+      color: var(--accent, #4da3ff);
+      text-decoration: none;
+    }
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body data-page="reset">
+  <div class="reset-container">
+    <div class="brand">
+      <div class="group-name">WA E-Football Gees</div>
+      <div class="group-sub">Reset your password</div>
+    </div>
+
+    <form id="reset-form">
+      <input type="hidden" id="token" name="token">
+      <input type="hidden" id="email" name="email">
+      
+      <div class="form-group">
+        <label for="password">New Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="confirm">Confirm New Password</label>
+        <input type="password" id="confirm" name="confirm" required>
+      </div>
+      
+      <button type="submit" class="btn primary full">Reset Password</button>
+      
+      <div id="reset-error" class="error"></div>
+      <div id="reset-success" class="success"></div>
+    </form>
+
+    <div class="back-link">
+      <a href="auth.html">Back to Login</a>
+    </div>
+  </div>
+
+  <script src="js/reset.js"></script>
+</body>
+</html>

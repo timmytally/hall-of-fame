@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign Up / Login - WhatsApp E-Football Tournament</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .auth-container {
+      max-width: 400px;
+      margin: 80px auto;
+      padding: 32px;
+      background: var(--card-bg, #1a1a1a);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .auth-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border, #333);
+    }
+    .auth-tab {
+      padding: 12px 16px;
+      background: none;
+      border: none;
+      color: var(--text-muted, #888);
+      cursor: pointer;
+      font-size: 16px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .auth-tab.active {
+      color: var(--accent, #4da3ff);
+      border-bottom-color: var(--accent, #4da3ff);
+    }
+    .auth-form {
+      display: none;
+    }
+    .auth-form.active {
+      display: block;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      color: var(--text, #fff);
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border, #333);
+      border-radius: 6px;
+      background: var(--bg, #000);
+      color: var(--text, #fff);
+      font-size: 14px;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent, #4da3ff);
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn.primary {
+      background: var(--accent, #4da3ff);
+      color: white;
+    }
+    .btn.primary:hover {
+      background: var(--accent-hover, #3a8bc7);
+    }
+    .btn.ghost {
+      background: transparent;
+      color: var(--text-muted, #888);
+      border: 1px solid var(--border, #333);
+    }
+    .btn.ghost:hover {
+      background: var(--card-bg, #1a1a1a);
+    }
+    .btn.full {
+      width: 100%;
+    }
+    .auth-links {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-muted, #888);
+    }
+    .auth-links a {
+      color: var(--accent, #4da3ff);
+      text-decoration: none;
+    }
+    .auth-links a:hover {
+      text-decoration: underline;
+    }
+    .error {
+      color: #ff6b6b;
+      font-size: 14px;
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(255,107,107,0.1);
+      border-radius: 4px;
+      display: none;
+    }
+    .success {
+      color: #51cf66;
+      font-size: 14px;
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(81,207,102,0.1);
+      border-radius: 4px;
+      display: none;
+    }
+  </style>
+</head>
+<body data-page="auth">
+  <div class="auth-container">
+    <div class="brand" style="text-align: center; margin-bottom: 32px;">
+      <div class="group-name">WA E-Football Gees</div>
+      <div class="group-sub">Join our Tournament Community</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Login</button>
+      <button class="auth-tab" data-tab="signup">Sign Up</button>
+    </div>
+
+    <!-- Google OAuth Section -->
+    <div class="oauth-section" style="margin-bottom: 24px;">
+      <div style="text-align: center; margin: 16px 0; color: var(--text-muted, #888); font-size: 14px;">Or continue with</div>
+      <a href="/auth/google" class="btn google-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #4285f4; color: white;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Sign in with Google
+      </a>
+    </div>
+
+    <!-- Login Form -->
+    <form id="login-form" class="auth-form active">
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" name="password" required>
+      </div>
+      <button type="submit" class="btn primary full">Login</button>
+      <div class="auth-links">
+        <a href="#" id="forgot-password">Forgot password?</a>
+      </div>
+      <div id="login-error" class="error"></div>
+      <div id="login-success" class="success"></div>
+    </form>
+
+    <!-- Signup Form -->
+    <form id="signup-form" class="auth-form">
+      <div class="form-group">
+        <label for="signup-name">Display Name</label>
+        <input type="text" id="signup-name" name="name" placeholder="How should we call you?">
+      </div>
+      <div class="form-group">
+        <label for="signup-email">Email</label>
+        <input type="email" id="signup-email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label for="signup-password">Password</label>
+        <input type="password" id="signup-password" name="password" required>
+      </div>
+      <div class="form-group">
+        <label for="signup-confirm">Confirm Password</label>
+        <input type="password" id="signup-confirm" name="confirm" required>
+      </div>
+      <button type="submit" class="btn primary full">Create Account</button>
+      <div id="signup-error" class="error"></div>
+      <div id="signup-success" class="success"></div>
+    </form>
+
+    <div class="auth-links">
+      Already have an account? <a href="#" id="switch-to-login">Login</a>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+</body>
+</html>
