@@ -14,8 +14,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-// File uploads
-const upload = multer({ dest: 'uploads/' });
+// File upload config - use memory storage for Vercel
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Mail transporter (Gmail App Password or other SMTP)
 const transporter = nodemailer.createTransport({
@@ -103,12 +104,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Ensure sessions directory exists for FileStore
-if (!fs.existsSync('./sessions')) {
-  fs.mkdirSync('./sessions', { recursive: true });
-}
-// Persistent session store (file-based for dev). For production use Redis/Mongo.
-const FileStore = FileStoreFactory(session);
+// Use memory store for Vercel (no filesystem)
 app.use(session({
   secret: process.env.SESSION_SECRET || 'change-me',
   resave: false,
@@ -413,26 +409,24 @@ app.post('/api/winners', requireAdmin, upload.single('photo'), (req, res) => {
     rank: req.body.rank,
     score: req.body.score,
     date: req.body.date,
-    photo: req.file ? `/uploads/${req.file.filename}` : ''
+    photo: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : ''
   };
   winners.push(winner);
   fs.writeFileSync(WINNERS_FILE, JSON.stringify(winners, null, 2));
   res.json({ success: true, winner });
 });
 
-// Edit winner
 app.put('/api/winners/:id', requireAdmin, upload.single('photo'), (req, res) => {
   const winners = JSON.parse(fs.readFileSync(WINNERS_FILE));
   const idx = winners.findIndex(w => w.id == req.params.id);
   if (idx === -1) return res.status(404).json({ success: false, message: 'Winner not found' });
-
-  winners[idx] = {
-    ...winners[idx],
-    ...req.body,
-    photo: req.file ? `/uploads/${req.file.filename}` : winners[idx].photo
-  };
+  const winner = winners[idx];
+  Object.assign(winner, req.body);
+  if (req.file) {
+    winner.photo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+  }
   fs.writeFileSync(WINNERS_FILE, JSON.stringify(winners, null, 2));
-  res.json({ success: true, winner: winners[idx] });
+  res.json({ success: true, winner });
 });
 
 // Delete winner
