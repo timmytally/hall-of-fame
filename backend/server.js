@@ -468,10 +468,27 @@ app.get('/public/winners', (req, res) => {
 // Social Features
 // --------------------
 
+// List all users (for discovery)
+app.get('/api/users', requireAuth, (req, res) => {
+  const users = readUsers();
+  // Return basic user info without sensitive data
+  const publicUsers = users.map(u => ({
+    email: u.email,
+    name: u.name,
+    picture: u.picture,
+    followers: u.followers || [],
+    following: u.following || [],
+    createdAt: u.createdAt
+  }));
+  res.json({ success: true, users: publicUsers });
+});
+
 // Follow a user
 app.post('/api/users/:email/follow', requireAuth, (req, res) => {
   const targetEmail = req.params.email;
   const currentUser = req.user;
+  
+  console.log('Follow request:', { targetEmail, currentUser: currentUser.email });
   
   if (currentUser.email === targetEmail) {
     return res.status(400).json({ success: false, message: 'Cannot follow yourself' });
@@ -481,9 +498,19 @@ app.post('/api/users/:email/follow', requireAuth, (req, res) => {
   const targetUser = users.find(u => u.email === targetEmail);
   const userIndex = users.findIndex(u => u.email === currentUser.email);
   
+  console.log('Target user found:', !!targetUser, 'User index:', userIndex);
+  
   if (!targetUser) {
-    return res.status(404).json({ success: false, message: 'User not found' });
+    return res.status(404).json({ success: false, message: 'User not found: ' + targetEmail });
   }
+  
+  if (userIndex === -1) {
+    return res.status(404).json({ success: false, message: 'Current user not found' });
+  }
+  
+  // Initialize arrays if they don't exist
+  if (!users[userIndex].following) users[userIndex].following = [];
+  if (!targetUser.followers) targetUser.followers = [];
   
   // Add to following list
   if (!users[userIndex].following.includes(targetEmail)) {
@@ -496,7 +523,7 @@ app.post('/api/users/:email/follow', requireAuth, (req, res) => {
   }
   
   writeUsers(users);
-  res.json({ success: true });
+  res.json({ success: true, message: `Now following ${targetEmail}` });
 });
 
 // Unfollow a user

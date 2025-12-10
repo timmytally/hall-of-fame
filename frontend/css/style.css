@@ -286,6 +286,7 @@ body[data-page="home"]{
 .followers-section,
 .following-section,
 .admin-section,
+.discovery-section,
 .follow-section {
   margin-bottom: 2rem;
   padding: 1.5rem;
@@ -298,6 +299,7 @@ body[data-page="home"]{
 .followers-section h3,
 .following-section h3,
 .admin-section h3,
+.discovery-section h3,
 .follow-section h3 {
   margin-top: 0;
   margin-bottom: 1rem;

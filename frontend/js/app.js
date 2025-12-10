@@ -480,6 +480,15 @@
     return d.user || null;
   }
 
+  async function apiGetAllUsers(){
+    const r = await fetch('/api/users', { 
+      credentials: 'include' 
+    });
+    if (!r.ok) throw new Error('Failed to load users');
+    const d = await r.json();
+    return d.users || [];
+  }
+
   // Social features initialization
   function initSocialFeatures(){
     // Follow form handler
@@ -562,8 +571,66 @@
         }
       }
 
+      // Load all users for discovery
+      await loadAllUsers();
+
     } catch (error) {
       console.error('Failed to load social data:', error);
+    }
+  }
+
+  // Load all users for discovery
+  async function loadAllUsers(){
+    try {
+      const users = await apiGetAllUsers();
+      const usersList = document.getElementById('users-list');
+      
+      if (!usersList) return;
+      
+      const profile = await apiProfileGet();
+      const currentUserEmail = profile ? profile.email : null;
+      
+      if (users.length === 0) {
+        usersList.innerHTML = '<p>No other users found.</p>';
+        return;
+      }
+      
+      // Filter out current user and show others
+      const otherUsers = users.filter(u => u.email !== currentUserEmail);
+      
+      if (otherUsers.length === 0) {
+        usersList.innerHTML = '<p>No other users found.</p>';
+        return;
+      }
+      
+      usersList.innerHTML = otherUsers.map(user => `
+        <div class="user-item">
+          <div>
+            <strong>${user.name || user.email}</strong><br>
+            <small class="muted">${user.email}</small><br>
+            <small>Followers: ${user.followers ? user.followers.length : 0}</small>
+          </div>
+          <button class="btn small" onclick="followUserFromList('${user.email}')">Follow</button>
+        </div>
+      `).join('');
+      
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      const usersList = document.getElementById('users-list');
+      if (usersList) {
+        usersList.innerHTML = '<p>Failed to load users.</p>';
+      }
+    }
+  }
+
+  // Follow user from discovery list
+  async function followUserFromList(email){
+    try {
+      await apiFollowUser(email);
+      alert(`You are now following ${email}`);
+      loadSocialData(); // Reload to update lists
+    } catch (error) {
+      alert('Failed to follow user: ' + error.message);
     }
   }
 
