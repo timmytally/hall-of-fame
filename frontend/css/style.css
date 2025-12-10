@@ -280,3 +280,62 @@ body[data-page="home"]{
   font-weight: bold;
   
   }
+
+/* Social Features Styles */
+.profile-section,
+.followers-section,
+.following-section,
+.admin-section,
+.follow-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.profile-section h3,
+.followers-section h3,
+.following-section h3,
+.admin-section h3,
+.follow-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--glass);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.user-item span {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.btn.danger {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: white;
+  border: none;
+}
+
+.btn.danger:hover {
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
+}
+
+:root.light .btn.danger {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+
+:root.light .btn.danger:hover {
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
+}

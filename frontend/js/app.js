@@ -443,6 +443,160 @@
     return d.winners || [];
   }
 
+  // Social API functions
+  async function apiFollowUser(email){
+    const r = await fetch(`/api/users/${email}/follow`, { 
+      method: 'POST', 
+      credentials: 'include' 
+    });
+    if (!r.ok) throw new Error('Failed to follow user');
+    return await r.json();
+  }
+
+  async function apiUnfollowUser(email){
+    const r = await fetch(`/api/users/${email}/unfollow`, { 
+      method: 'POST', 
+      credentials: 'include' 
+    });
+    if (!r.ok) throw new Error('Failed to unfollow user');
+    return await r.json();
+  }
+
+  async function apiGrantAdmin(email){
+    const r = await fetch(`/api/users/${email}/grant-admin`, { 
+      method: 'POST', 
+      credentials: 'include' 
+    });
+    if (!r.ok) throw new Error('Failed to grant admin access');
+    return await r.json();
+  }
+
+  async function apiGetUserProfile(email){
+    const r = await fetch(`/api/users/${email}`, { 
+      credentials: 'include' 
+    });
+    if (!r.ok) throw new Error('Failed to load user profile');
+    const d = await r.json();
+    return d.user || null;
+  }
+
+  // Social features initialization
+  function initSocialFeatures(){
+    // Follow form handler
+    const followForm = document.getElementById('follow-form');
+    if (followForm) {
+      followForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = followForm.email.value;
+        try {
+          await apiFollowUser(email);
+          alert(`You are now following ${email}`);
+          followForm.reset();
+          loadSocialData();
+        } catch (error) {
+          alert('Failed to follow user: ' + error.message);
+        }
+      });
+    }
+  }
+
+  // Load social data for current user
+  async function loadSocialData(){
+    try {
+      const profile = await apiProfileGet();
+      if (!profile) return;
+
+      // Update profile info
+      const profileInfo = document.getElementById('profile-info');
+      if (profileInfo) {
+        profileInfo.innerHTML = `
+          <p><strong>Email:</strong> ${profile.email}</p>
+          <p><strong>Name:</strong> ${profile.name || 'Not set'}</p>
+          <p><strong>Account Type:</strong> ${profile.role || 'user'}</p>
+          <p><strong>Followers:</strong> ${profile.followers ? profile.followers.length : 0}</p>
+          <p><strong>Following:</strong> ${profile.following ? profile.following.length : 0}</p>
+        `;
+      }
+
+      // Load followers
+      const followersList = document.getElementById('followers-list');
+      if (followersList && profile.followers) {
+        if (profile.followers.length === 0) {
+          followersList.innerHTML = '<p>No followers yet.</p>';
+        } else {
+          followersList.innerHTML = profile.followers.map(email => `
+            <div class="user-item">
+              <span>${email}</span>
+              <button class="btn small" onclick="grantAdminToUser('${email}')">Grant Admin</button>
+            </div>
+          `).join('');
+        }
+      }
+
+      // Load following
+      const followingList = document.getElementById('following-list');
+      if (followingList && profile.following) {
+        if (profile.following.length === 0) {
+          followingList.innerHTML = '<p>You\'re not following anyone yet.</p>';
+        } else {
+          followingList.innerHTML = profile.following.map(email => `
+            <div class="user-item">
+              <span>${email}</span>
+              <button class="btn small danger" onclick="unfollowUser('${email}')">Unfollow</button>
+            </div>
+          `).join('');
+        }
+      }
+
+      // Load admins
+      const adminsList = document.getElementById('admins-list');
+      if (adminsList && profile.admins) {
+        if (profile.admins.length === 0) {
+          adminsList.innerHTML = '<p>No admins granted yet.</p>';
+        } else {
+          adminsList.innerHTML = profile.admins.map(email => `
+            <div class="user-item">
+              <span>${email} (Admin)</span>
+            </div>
+          `).join('');
+        }
+      }
+
+    } catch (error) {
+      console.error('Failed to load social data:', error);
+    }
+  }
+
+  // Grant admin to user
+  async function grantAdminToUser(email){
+    if (confirm(`Grant admin access to ${email}? They will be able to manage your winners.`)) {
+      try {
+        await apiGrantAdmin(email);
+        alert(`Admin access granted to ${email}`);
+        loadSocialData();
+      } catch (error) {
+        alert('Failed to grant admin: ' + error.message);
+      }
+    }
+  }
+
+  // Unfollow user
+  async function unfollowUser(email){
+    if (confirm(`Unfollow ${email}?`)) {
+      try {
+        await apiUnfollowUser(email);
+        alert(`You are no longer following ${email}`);
+        loadSocialData();
+      } catch (error) {
+        alert('Failed to unfollow: ' + error.message);
+      }
+    }
+  }
+
+  // Make functions global for onclick handlers
+  window.grantAdminToUser = grantAdminToUser;
+  window.unfollowUser = unfollowUser;
+
   // Admin page logic with first-time setup (stores a hashed password in localStorage)
   async function hashPassword(pw){
     try{
@@ -466,6 +620,7 @@
       initManageWinners();
       initTabSwitching();
       initEditModalHandlers();
+      initSocialFeatures();
       await loadAndShowProfile();
       return;
     }
@@ -536,6 +691,11 @@
         document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
         btn.classList.add('active');
         byId(tab+'-tab').classList.add('active');
+        
+        // Load social data when social tab is clicked
+        if (tab === 'social') {
+          loadSocialData();
+        }
       })
     })
   }

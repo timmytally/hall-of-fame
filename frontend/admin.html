@@ -37,6 +37,7 @@
     <div class="admin-tabs">
       <button class="tab-btn active" data-tab="add">Add Winner</button>
       <button class="tab-btn" data-tab="manage">Manage Winners</button>
+      <button class="tab-btn" data-tab="social">Social</button>
     </div>
             <!-- Add Winner Tab -->
     <div id="add-tab" class="tab-content active admin-card">
@@ -82,6 +83,52 @@
           </div>
         </div>
       </template>
+    </div>
+
+    <!-- Social Tab -->
+    <div id="social-tab" class="tab-content admin-card">
+      <h2>Social Features</h2>
+      
+      <!-- Profile Section -->
+      <div class="profile-section">
+        <h3>Your Profile</h3>
+        <div id="profile-info">
+          <p>Loading profile...</p>
+        </div>
+      </div>
+
+      <!-- Followers Section -->
+      <div class="followers-section">
+        <h3>Your Followers</h3>
+        <div id="followers-list">
+          <p>No followers yet.</p>
+        </div>
+      </div>
+
+      <!-- Following Section -->
+      <div class="following-section">
+        <h3>People You Follow</h3>
+        <div id="following-list">
+          <p>You're not following anyone yet.</p>
+        </div>
+      </div>
+
+      <!-- Admin Management -->
+      <div class="admin-section">
+        <h3>Admin Management</h3>
+        <div id="admins-list">
+          <p>No admins granted yet.</p>
+        </div>
+      </div>
+
+      <!-- Follow User -->
+      <div class="follow-section">
+        <h3>Follow User</h3>
+        <form id="follow-form" class="form">
+          <label>Email <input name="email" type="email" placeholder="user@example.com" required></label>
+          <button type="submit" class="btn primary">Follow User</button>
+        </form>
+      </div>
     </div>
 
     <!-- Edit Modal -->
