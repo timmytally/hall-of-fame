@@ -169,12 +169,12 @@
         const r = await fetch('/api/me', { credentials: 'include' });
         const me = await r.json();
         console.log('Auth check result:', me);
-        if (!me || !me.isAdmin) {
-          console.log('Not admin or not logged in');
+        if (!me) {
+          console.log('Not logged in');
           const guest = document.getElementById('admin-guest');
           if (guest) guest.style.display = 'block';
         } else {
-          console.log('Admin authenticated, hiding guest message');
+          console.log('User authenticated, hiding guest message');
           const guest = document.getElementById('admin-guest');
           if (guest) guest.style.display = 'none';
         }

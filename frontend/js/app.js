@@ -615,7 +615,7 @@
   try{
     const meRes = await fetch('/api/me', { credentials: 'include' });
     const me = await meRes.json();
-    if(me && me.isAdmin){
+    if(me){
       initAddWinnerForm();
       initManageWinners();
       initTabSwitching();
