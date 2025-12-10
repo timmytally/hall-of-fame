@@ -341,3 +341,29 @@ body[data-page="home"]{
 :root.light .btn.danger:hover {
   background: linear-gradient(135deg, #b91c1c, #dc2626);
 }
+
+/* User Info Section */
+.user-info-section {
+  margin-bottom: 2rem;
+}
+
+.user-info-card {
+  padding: 1.5rem;
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+  text-align: center;
+}
+
+.user-info-card h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.user-info-card .muted {
+  margin: 0.25rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}

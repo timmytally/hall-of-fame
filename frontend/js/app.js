@@ -28,7 +28,17 @@
   // Public data loader for shareable links
   async function loadPublicData(){
     try {
-      return await apiGetPublicWinners();
+      // Check if this is a user-specific shareable link
+      const urlParams = new URLSearchParams(window.location.search);
+      const userEmail = urlParams.get('user');
+      
+      if (userEmail) {
+        // Load user-specific winners
+        return await apiGetPublicWinners(userEmail);
+      } else {
+        // Load general public winners (empty for now)
+        return await apiGetPublicWinners();
+      }
     } catch(e) {
       console.error('Failed to load public winners:', e);
       return [];
@@ -269,13 +279,59 @@
     }
   }
 
+  // Show user info for user-specific shareable links
+  async function showUserInfo(userEmail){
+    try {
+      // Get user data
+      const response = await fetch(`/api/users/${encodeURIComponent(userEmail)}`, { credentials: 'include' });
+      if (!response.ok) {
+        console.error('Failed to load user info');
+        return;
+      }
+      
+      const data = await response.json();
+      const user = data.user;
+      
+      if (!user) return;
+      
+      // Show user info section
+      const userInfoSection = document.getElementById('user-info');
+      const userName = document.getElementById('user-name');
+      const userEmailEl = document.getElementById('user-email');
+      const userWinnersCount = document.getElementById('user-winners-count');
+      
+      if (userInfoSection) {
+        userInfoSection.style.display = 'block';
+      }
+      
+      if (userName) userName.textContent = user.name || 'Unknown User';
+      if (userEmailEl) userEmailEl.textContent = user.email;
+      
+      // Count winners for this user
+      const winners = await apiGetPublicWinners(userEmail);
+      if (userWinnersCount) {
+        userWinnersCount.textContent = `${winners.length} winner${winners.length !== 1 ? 's' : ''}`;
+      }
+      
+    } catch (error) {
+      console.error('Error showing user info:', error);
+    }
+  }
+
   // Winners page
   async function initWinners(){
-    const isPublicMode = new URLSearchParams(window.location.search).get('public') === 'true';
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPublicMode = urlParams.get('public') === 'true';
+    const userEmail = urlParams.get('user');
     
     // For public mode, don't seed data, just load from API
     if (!isPublicMode) {
       ensureSeed();
+    }
+    
+    // Show user info if this is a user-specific link
+    if (userEmail) {
+      await showUserInfo(userEmail);
     }
     
     const listEl = byId('winners-list');
@@ -404,27 +460,39 @@
   }
 
   // Generate shareable link for public viewing
-  function generateShareableLink(tournament = null, player = null) {
-    const baseUrl = window.location.origin + '/winners.html';
-    const params = new URLSearchParams();
-    
-    // Add public mode flag
-    params.set('public', 'true');
-    
-    // Optional filters
-    if (tournament) params.set('tournament', tournament);
-    if (player) params.set('player', player);
-    
-    const url = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
-    
-    // Copy to clipboard and show message
-    navigator.clipboard.writeText(url).then(() => {
-      alert('Shareable link copied to clipboard!\n\n' + url);
-    }).catch(() => {
-      prompt('Shareable link (copy this):', url);
-    });
-    
-    return url;
+  async function generateShareableLink(tournament = null, player = null) {
+    try {
+      // Get current user info
+      const profile = await apiProfileGet();
+      if (!profile) {
+        alert('Please sign in to generate shareable links');
+        return;
+      }
+      
+      const baseUrl = window.location.origin + '/winners.html';
+      const params = new URLSearchParams();
+      
+      // Add user-specific parameter
+      params.set('user', profile.email);
+      params.set('public', 'true');
+      
+      // Optional filters
+      if (tournament) params.set('tournament', tournament);
+      if (player) params.set('player', player);
+      
+      const url = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+      
+      // Copy to clipboard and show message
+      navigator.clipboard.writeText(url).then(() => {
+        alert('Shareable link copied to clipboard!\n\n' + url + '\n\nThis link shows your winners only.');
+      }).catch(() => {
+        prompt('Shareable link (copy this):', url);
+      });
+      
+      return url;
+    } catch (error) {
+      alert('Failed to generate shareable link: ' + error.message);
+    }
   }
 
   // API helpers
@@ -436,8 +504,9 @@
   }
 
   // Public API for winners (no authentication required)
-  async function apiGetPublicWinners(){
-    const r = await fetch('/public/winners');
+  async function apiGetPublicWinners(userEmail = null){
+    const url = userEmail ? `/public/winners?user=${encodeURIComponent(userEmail)}` : '/public/winners';
+    const r = await fetch(url);
     if (!r.ok) throw new Error('Failed to load winners');
     const d = await r.json();
     return d.winners || [];
