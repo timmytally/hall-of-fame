@@ -31,9 +31,21 @@
       // Check if this is a user-specific shareable link
       const urlParams = new URLSearchParams(window.location.search);
       const userEmail = urlParams.get('user');
+      const username = urlParams.get('username');
       
-      if (userEmail) {
-        // Load user-specific winners
+      if (username) {
+        // Load winners by username
+        const response = await fetch(`/api/user/by-username/${encodeURIComponent(username)}`);
+        if (response.ok) {
+          const data = await response.json();
+          const user = data.user;
+          if (user) {
+            return await apiGetPublicWinners(user.email);
+          }
+        }
+        return [];
+      } else if (userEmail) {
+        // Load user-specific winners (backwards compatibility)
         return await apiGetPublicWinners(userEmail);
       } else {
         // Load general public winners (empty for now)
@@ -280,19 +292,28 @@
   }
 
   // Show user info for user-specific shareable links
-  async function showUserInfo(userEmail){
+  async function showUserInfo(userIdentifier){
     try {
-      // Get user data
-      const response = await fetch(`/api/users/${encodeURIComponent(userEmail)}`, { credentials: 'include' });
-      if (!response.ok) {
-        console.error('Failed to load user info');
-        return;
+      let user = null;
+      
+      // Try to find user by username first, then by email
+      const response = await fetch(`/api/user/by-username/${encodeURIComponent(userIdentifier)}`);
+      if (response.ok) {
+        const data = await response.json();
+        user = data.user;
+      } else {
+        // Fallback to email
+        const emailResponse = await fetch(`/api/users/${encodeURIComponent(userIdentifier)}`, { credentials: 'include' });
+        if (emailResponse.ok) {
+          const data = await emailResponse.json();
+          user = data.user;
+        }
       }
       
-      const data = await response.json();
-      const user = data.user;
-      
-      if (!user) return;
+      if (!user) {
+        console.error('User not found');
+        return;
+      }
       
       // Show user info section
       const userInfoSection = document.getElementById('user-info');
@@ -308,7 +329,7 @@
       if (userEmailEl) userEmailEl.textContent = user.email;
       
       // Count winners for this user
-      const winners = await apiGetPublicWinners(userEmail);
+      const winners = await apiGetPublicWinners(user.email);
       if (userWinnersCount) {
         userWinnersCount.textContent = `${winners.length} winner${winners.length !== 1 ? 's' : ''}`;
       }
@@ -323,6 +344,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const isPublicMode = urlParams.get('public') === 'true';
     const userEmail = urlParams.get('user');
+    const username = urlParams.get('username');
     
     // For public mode, don't seed data, just load from API
     if (!isPublicMode) {
@@ -330,7 +352,9 @@
     }
     
     // Show user info if this is a user-specific link
-    if (userEmail) {
+    if (username) {
+      await showUserInfo(username);
+    } else if (userEmail) {
       await showUserInfo(userEmail);
     }
     
@@ -469,11 +493,11 @@
         return;
       }
       
-      const baseUrl = window.location.origin + '/winners.html';
+      // Use username if available, otherwise fall back to email
+      const userIdentifier = profile.username || profile.email;
+      const baseUrl = window.location.origin + '/@' + userIdentifier;
       const params = new URLSearchParams();
       
-      // Add user-specific parameter
-      params.set('user', profile.email);
       params.set('public', 'true');
       
       // Optional filters
@@ -676,7 +700,7 @@
         <div class="user-item">
           <div>
             <strong>${user.name || user.email}</strong><br>
-            <small class="muted">${user.email}</small><br>
+            <small class="muted">@${user.username || user.email}</small><br>
             <small>Followers: ${user.followers ? user.followers.length : 0}</small>
           </div>
           <button class="btn small" onclick="followUserFromList('${user.email}')">Follow</button>

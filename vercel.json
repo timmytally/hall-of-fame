@@ -28,6 +28,10 @@
       "dest": "/backend/server.js"
     },
     {
+      "src": "/@(.*)",
+      "dest": "/frontend/winners.html?username=$1&public=true"
+    },
+    {
       "src": "/(.*)",
       "dest": "/frontend/$1"
     }

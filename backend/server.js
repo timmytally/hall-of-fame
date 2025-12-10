@@ -163,9 +163,14 @@ passport.use(new GoogleStrategy({
   const users = readUsers();
   let user = users.find(u => u.email === email);
   if (!user) {
+    // Generate username from email or name
+    const baseUsername = profile.displayName.toLowerCase().replace(/\s+/g, '') || email.split('@')[0];
+    const username = baseUsername + Date.now().toString().slice(-4); // Add random to make unique
+    
     user = {
       email,
       name: profile.displayName,
+      username: username,
       picture: profile.photos && profile.photos[0] ? profile.photos[0].value : '',
       role: 'user',  // Everyone starts as regular user
       followers: [],  // People who follow this user
@@ -174,6 +179,11 @@ passport.use(new GoogleStrategy({
       createdAt: Date.now()
     };
     users.push(user);
+    writeUsers(users);
+  } else if (!user.username) {
+    // Add username to existing users who don't have one
+    const baseUsername = user.name ? user.name.toLowerCase().replace(/\s+/g, '') : user.email.split('@')[0];
+    user.username = baseUsername + Date.now().toString().slice(-4);
     writeUsers(users);
   }
   return done(null, user);
@@ -584,16 +594,42 @@ app.get('/api/users/:email', requireAuth, (req, res) => {
   const targetEmail = req.params.email;
   const users = readUsers();
   const user = users.find(u => u.email === targetEmail);
-  
+
   if (!user) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
-  
+
   res.json({
     success: true,
     user: {
       email: user.email,
       name: user.name,
+      username: user.username,
+      picture: user.picture,
+      followers: user.followers,
+      following: user.following,
+      admins: user.admins,
+      createdAt: user.createdAt
+    }
+  });
+});
+
+// Find user by username
+app.get('/api/user/by-username/:username', (req, res) => {
+  const username = req.params.username;
+  const users = readUsers();
+  const user = users.find(u => u.username === username);
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  res.json({
+    success: true,
+    user: {
+      email: user.email,
+      name: user.name,
+      username: user.username,
       picture: user.picture,
       followers: user.followers,
       following: user.following,
