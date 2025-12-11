@@ -16,11 +16,11 @@
   // Backend data loader (always use API for consistent data)
   async function loadBackendData(){
     try {
-      const r = await fetch('/api/winners');
+      const r = await fetch('/api/winners', { credentials: 'include' });
       if (!r.ok) return [];
       return await r.json();
     } catch(e) {
-      console.error('Failed to load backend data:', e);
+      console.error(e);
       return [];
     }
   }
