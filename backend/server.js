@@ -29,6 +29,10 @@ async function connectToMongoDB() {
     console.log('Connected to MongoDB');
   } catch (error) {
     console.error('MongoDB connection error:', error);
+    console.log('Running without MongoDB (in-memory storage)');
+    // Fallback to in-memory storage
+    usersCollection = null;
+    winnersCollection = null;
   }
 }
 
