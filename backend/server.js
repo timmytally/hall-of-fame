@@ -98,6 +98,10 @@ app.put('/api/profile', requireAuth, upload.single('avatar'), async (req, res) =
     }
     
     await saveUser(user);
+    
+    // Update the current session user object with the new data
+    req.user = user;
+    
     res.json({ success: true, profile: {
       email: user.email,
       name: user.name,
