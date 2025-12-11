@@ -717,8 +717,18 @@ app.get('/api/user/by-username/:username', async (req, res) => {
 });
 
 // Start server with MongoDB connection
-connectToMongoDB().then(() => {
-  app.listen(PORT, () => console.log(`Backend running at http://localhost:${PORT}`));
-}).catch(error => {
-  console.error('Failed to start server:', error);
-});
+if (process.env.NODE_ENV !== 'production') {
+  connectToMongoDB().then(() => {
+    app.listen(PORT, () => console.log(`Backend running at http://localhost:${PORT}`));
+  }).catch(error => {
+    console.error('Failed to start server:', error);
+  });
+} else {
+  // For Vercel serverless functions
+  connectToMongoDB().catch(error => {
+    console.error('MongoDB connection failed:', error);
+  });
+}
+
+// Export for Vercel
+export default app;
