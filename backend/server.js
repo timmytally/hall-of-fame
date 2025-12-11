@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import passport from 'passport';
-import passportGoogle from 'passport-google-oauth20';
+import GoogleStrategy from 'passport-google-oauth20';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -175,7 +175,7 @@ async function deleteWinner(winnerId) {
   await winnersCollection.deleteOne({ id: parseInt(winnerId) });
 }
 
-passport.use(new passportGoogle.GoogleStrategy({
+passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID || '',
   clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback',
