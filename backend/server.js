@@ -64,29 +64,30 @@ app.get('/api/profile', requireAuth, (req, res) => {
   });
 });
 
-app.put('/api/profile', requireAuth, upload.single('avatar'), (req, res) => {
-  const users = readUsers();
-  const idx = users.findIndex(u => u.email === req.user.email);
-  if (idx === -1) return res.status(404).json({ success:false });
-  const { name, picture } = req.body || {};
-  if (typeof name === 'string') users[idx].name = name.trim() || users[idx].name;
-  if (typeof picture === 'string') users[idx].picture = picture;
-  if (req.file) {
-    users[idx].picture = `/uploads/${req.file.filename}`;
-    console.log('Profile picture updated:', users[idx].picture);
-  }
-  writeUsers(users);
-  console.log('Updated user profile:', users[idx]);
-  res.json({ 
-    success:true,
-    profile: {
-      email: users[idx].email,
-      name: users[idx].name,
-      picture: users[idx].picture,
-      provider: users[idx].provider || 'google',
-      emailVerified: users[idx].emailVerified !== false
+app.put('/api/profile', requireAuth, upload.single('avatar'), async (req, res) => {
+  try {
+    const user = await findUserByEmail(req.user.email);
+    if (!user) return res.status(404).json({ success: false });
+    
+    const { name, picture } = req.body || {};
+    if (typeof name === 'string') user.name = name.trim() || user.name;
+    if (typeof picture === 'string') user.picture = picture;
+    if (req.file) {
+      user.picture = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
-  });
+    
+    await saveUser(user);
+    res.json({ success: true, profile: {
+      email: user.email,
+      name: user.name,
+      picture: user.picture,
+      provider: user.provider || 'google',
+      emailVerified: user.emailVerified !== false
+    } });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ success: false, message: 'Failed to update profile' });
+  }
 });
 
 // User functions using MongoDB
