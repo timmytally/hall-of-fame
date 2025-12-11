@@ -21,7 +21,24 @@ let winnersCollection;
 
 async function connectToMongoDB() {
   try {
-    const client = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27017/hall-of-fame');
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/hall-of-fame';
+    
+    // MongoDB connection options for Vercel serverless environment
+    const options = {
+      ssl: true,
+      sslValidate: true,
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+      tlsAllowInvalidHostnames: false,
+      maxPoolSize: 1, // Limit connections for serverless
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      retryWrites: true,
+      w: 'majority'
+    };
+    
+    const client = new MongoClient(mongoUri, options);
     await client.connect();
     db = client.db();
     usersCollection = db.collection('users');
@@ -110,6 +127,15 @@ async function saveUser(user){
 async function readUsers(){
   if (!usersCollection) return [];
   return await usersCollection.find({}).toArray();
+}
+
+async function writeUsers(users){
+  if (!usersCollection) return;
+  // Clear all existing users and insert new ones
+  await usersCollection.deleteMany({});
+  if (users.length > 0) {
+    await usersCollection.insertMany(users);
+  }
 }
 
 function randomToken(){
@@ -328,18 +354,6 @@ function requireAuth(req, res, next){
     }
   }
   
-  // For Vercel, check if there's any auth and allow for testing
-  if (req.headers.cookie && req.headers.cookie.includes('_vercel_jwt=')) {
-    console.log('Vercel JWT detected - allowing for testing');
-    // Create a temporary user for testing
-    req.user = {
-      email: 'test@example.com',
-      name: 'Test User',
-      role: 'user'
-    };
-    return next();
-  }
-  
   console.log('Not authenticated');
   return res.status(401).json({ success: false, message: 'Authentication required' });
 }
@@ -353,7 +367,7 @@ app.post('/api/register', async (req, res) => {
   try{
     const { email, password, name } = req.body || {};
     if(!email || !password) return res.status(400).json({ success:false, message:'Email and password required' });
-    const existing = findUserByEmail(email);
+    const existing = await findUserByEmail(email);
     if(existing) return res.status(409).json({ success:false, message:'Email already registered' });
     const passwordHash = await bcrypt.hash(password, 10);
     const verifyToken = randomToken();
@@ -370,7 +384,7 @@ app.post('/api/register', async (req, res) => {
       picture: '',
       createdAt: Date.now()
     };
-    saveUser(user);
+    await saveUser(user);
 
     const verifyUrl = `${req.protocol}://${req.get('host')}/auth/verify?token=${encodeURIComponent(verifyToken)}&email=${encodeURIComponent(email)}`;
     await sendMail(email, 'Verify your email — Hall of Fame', `
@@ -386,15 +400,15 @@ app.post('/api/register', async (req, res) => {
 });
 
 // Verify email link
-app.get('/auth/verify', (req, res) => {
+app.get('/auth/verify', async (req, res) => {
   const { token, email } = req.query;
   if(!token || !email) return res.status(400).send('Invalid verification link');
-  const users = readUsers();
+  const users = await readUsers();
   const idx = users.findIndex(u => (u.email||'').toLowerCase() === String(email).toLowerCase() && u.verifyToken === token);
   if(idx === -1) return res.status(400).send('Invalid or expired token');
   users[idx].emailVerified = true;
   users[idx].verifyToken = null;
-  writeUsers(users);
+  await writeUsers(users);
   // Sign user into session
   req.login?.(users[idx], (err) => {
     return res.redirect('/admin.html?verified=1');
@@ -405,7 +419,7 @@ app.get('/auth/verify', (req, res) => {
 app.post('/api/login', async (req, res) => {
   try{
     const { email, password } = req.body || {};
-    const user = findUserByEmail(email);
+    const user = await findUserByEmail(email);
     if(!user || user.provider !== 'local' || !user.passwordHash) return res.status(401).json({ success:false, message:'Invalid credentials' });
     const ok = await bcrypt.compare(password, user.passwordHash);
     if(!ok) return res.status(401).json({ success:false, message:'Invalid credentials' });
@@ -431,13 +445,13 @@ app.post('/api/login', async (req, res) => {
 // Forgot password: send reset link
 app.post('/api/password/forgot', async (req, res) => {
   const { email } = req.body || {};
-  const users = readUsers();
+  const users = await readUsers();
   const idx = users.findIndex(u => (u.email||'').toLowerCase() === (email||'').toLowerCase());
   if(idx === -1) return res.json({ success:true }); // do not reveal existence
   const token = randomToken();
   users[idx].resetToken = token;
   users[idx].resetExpires = Date.now() + 60*60*1000; // 1 hour
-  writeUsers(users);
+  await writeUsers(users);
   const resetUrl = `${req.protocol}://${req.get('host')}/reset.html?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
   await sendMail(email, 'Reset your password — Hall of Fame', `
     <p>Click to reset your password (valid 1 hour):</p>
@@ -451,14 +465,14 @@ app.post('/api/password/reset', async (req, res) => {
   try{
     const { token, email, password } = req.body || {};
     if(!token || !email || !password) return res.status(400).json({ success:false });
-    const users = readUsers();
+    const users = await readUsers();
     const idx = users.findIndex(u => (u.email||'').toLowerCase() === (email||'').toLowerCase() && u.resetToken === token);
     if(idx === -1) return res.status(400).json({ success:false, message:'Invalid token' });
     if(!users[idx].resetExpires || users[idx].resetExpires < Date.now()) return res.status(400).json({ success:false, message:'Token expired' });
     users[idx].passwordHash = await bcrypt.hash(password, 10);
     users[idx].resetToken = null;
     users[idx].resetExpires = null;
-    writeUsers(users);
+    await writeUsers(users);
     res.json({ success:true });
   }catch(e){
     console.error(e);
