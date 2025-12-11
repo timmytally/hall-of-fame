@@ -19,6 +19,10 @@ let db;
 let usersCollection;
 let winnersCollection;
 
+// In-memory fallback storage
+const inMemoryWinners = new Map(); // userEmail -> array of winners
+const inMemoryUsers = new Map(); // email -> user object
+
 async function connectToMongoDB() {
   try {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/hall-of-fame';
@@ -107,16 +111,24 @@ app.put('/api/profile', requireAuth, upload.single('avatar'), async (req, res) =
   }
 });
 
-// User functions using MongoDB
+// User functions using MongoDB with in-memory fallback
 async function findUserByEmail(email){
-  if (!usersCollection) return null;
+  if (!usersCollection) {
+    // Fallback to in-memory storage
+    return inMemoryUsers.get(email.toLowerCase()) || null;
+  }
   return await usersCollection.findOne({ 
     email: { $regex: new RegExp('^' + email + '$', 'i') }
   });
 }
 
 async function saveUser(user){
-  if (!usersCollection) return;
+  if (!usersCollection) {
+    // Fallback to in-memory storage
+    inMemoryUsers.set(user.email.toLowerCase(), user);
+    console.log('User saved to in-memory storage:', user.email);
+    return;
+  }
   await usersCollection.replaceOne(
     { email: user.email },
     user,
@@ -125,12 +137,23 @@ async function saveUser(user){
 }
 
 async function readUsers(){
-  if (!usersCollection) return [];
+  if (!usersCollection) {
+    // Fallback to in-memory storage
+    return Array.from(inMemoryUsers.values());
+  }
   return await usersCollection.find({}).toArray();
 }
 
 async function writeUsers(users){
-  if (!usersCollection) return;
+  if (!usersCollection) {
+    // Fallback to in-memory storage
+    inMemoryUsers.clear();
+    for (const user of users) {
+      inMemoryUsers.set(user.email.toLowerCase(), user);
+    }
+    console.log('Users saved to in-memory storage:', users.length);
+    return;
+  }
   // Clear all existing users and insert new ones
   await usersCollection.deleteMany({});
   if (users.length > 0) {
@@ -197,20 +220,42 @@ app.use(express.static('../frontend'));
 // Serve uploads directory
 app.use('/uploads', express.static('uploads'));
 
-// Winners storage using MongoDB
+// Winners storage using MongoDB with in-memory fallback
 async function getUserWinners(userEmail) {
-  if (!winnersCollection) return [];
+  if (!winnersCollection) {
+    // Fallback to in-memory storage
+    return inMemoryWinners.get(userEmail) || [];
+  }
   const result = await winnersCollection.find({ userEmail }).toArray();
   return result.map(w => ({ ...w, _id: undefined }));
 }
 
 async function saveWinner(userEmail, winner) {
-  if (!winnersCollection) return;
+  if (!winnersCollection) {
+    // Fallback to in-memory storage
+    if (!inMemoryWinners.has(userEmail)) {
+      inMemoryWinners.set(userEmail, []);
+    }
+    inMemoryWinners.get(userEmail).push(winner);
+    console.log('Winner saved to in-memory storage:', winner.id);
+    return;
+  }
   await winnersCollection.insertOne({ ...winner, userEmail });
 }
 
 async function updateWinner(winnerId, winner) {
-  if (!winnersCollection) return;
+  if (!winnersCollection) {
+    // Fallback to in-memory storage - need to find by userEmail
+    for (const [userEmail, winners] of inMemoryWinners.entries()) {
+      const index = winners.findIndex(w => w.id === parseInt(winnerId));
+      if (index !== -1) {
+        winners[index] = { ...winners[index], ...winner };
+        console.log('Winner updated in in-memory storage:', winnerId);
+        return;
+      }
+    }
+    return;
+  }
   await winnersCollection.updateOne(
     { id: parseInt(winnerId) },
     { $set: winner }
@@ -218,7 +263,18 @@ async function updateWinner(winnerId, winner) {
 }
 
 async function deleteWinner(winnerId) {
-  if (!winnersCollection) return;
+  if (!winnersCollection) {
+    // Fallback to in-memory storage - need to find by userEmail
+    for (const [userEmail, winners] of inMemoryWinners.entries()) {
+      const index = winners.findIndex(w => w.id === parseInt(winnerId));
+      if (index !== -1) {
+        winners.splice(index, 1);
+        console.log('Winner deleted from in-memory storage:', winnerId);
+        return;
+      }
+    }
+    return;
+  }
   await winnersCollection.deleteOne({ id: parseInt(winnerId) });
 }
 
