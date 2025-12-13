@@ -247,39 +247,37 @@ async function saveWinner(userEmail, winner) {
   await winnersCollection.insertOne({ ...winner, userEmail });
 }
 
-async function updateWinner(winnerId, winner) {
+async function updateWinner(userEmail, winnerId, winner) {
   if (!winnersCollection) {
-    // Fallback to in-memory storage - need to find by userEmail
-    for (const [userEmail, winners] of inMemoryWinners.entries()) {
-      const index = winners.findIndex(w => w.id === parseInt(winnerId));
-      if (index !== -1) {
-        winners[index] = { ...winners[index], ...winner };
-        console.log('Winner updated in in-memory storage:', winnerId);
-        return;
-      }
+    // Fallback to in-memory storage - only look in current user's winners
+    const userWinners = inMemoryWinners.get(userEmail) || [];
+    const index = userWinners.findIndex(w => w.id === parseInt(winnerId));
+    if (index !== -1) {
+      userWinners[index] = { ...userWinners[index], ...winner };
+      console.log('Winner updated in in-memory storage:', winnerId);
+      return;
     }
     return;
   }
   await winnersCollection.updateOne(
-    { id: parseInt(winnerId) },
+    { id: parseInt(winnerId), userEmail },
     { $set: winner }
   );
 }
 
-async function deleteWinner(winnerId) {
+async function deleteWinner(userEmail, winnerId) {
   if (!winnersCollection) {
-    // Fallback to in-memory storage - need to find by userEmail
-    for (const [userEmail, winners] of inMemoryWinners.entries()) {
-      const index = winners.findIndex(w => w.id === parseInt(winnerId));
-      if (index !== -1) {
-        winners.splice(index, 1);
-        console.log('Winner deleted from in-memory storage:', winnerId);
-        return;
-      }
+    // Fallback to in-memory storage - only look in current user's winners
+    const userWinners = inMemoryWinners.get(userEmail) || [];
+    const index = userWinners.findIndex(w => w.id === parseInt(winnerId));
+    if (index !== -1) {
+      userWinners.splice(index, 1);
+      console.log('Winner deleted from in-memory storage:', winnerId);
+      return;
     }
     return;
   }
-  await winnersCollection.deleteOne({ id: parseInt(winnerId) });
+  await winnersCollection.deleteOne({ id: parseInt(winnerId), userEmail });
 }
 
 passport.use(new GoogleStrategy({
@@ -548,7 +546,12 @@ app.post('/api/password/reset', async (req, res) => {
 app.get('/api/winners', requireAuth, async (req, res) => {
   try {
     const userEmail = req.user.email;
+    console.log('Getting winners for user:', userEmail);
+    console.log('Winners collection available:', !!winnersCollection);
+    console.log('In-memory winners size:', inMemoryWinners.size);
+    
     const winners = await getUserWinners(userEmail);
+    console.log('Retrieved winners:', winners.length);
     res.json(winners);
   } catch (error) {
     console.error('Error getting winners:', error);
@@ -560,18 +563,35 @@ app.get('/api/winners', requireAuth, async (req, res) => {
 app.post('/api/winners', requireAuth, upload.single('photo'), async (req, res) => {
   try {
     const userEmail = req.user.email;
+    const { name, wa, title, rank, score, date } = req.body || {};
+    
+    // Validate required fields
+    if (!name || !wa || !title) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Required fields missing: name, wa, title' 
+      });
+    }
+    
     const id = Date.now();
     const winner = {
       id,
-      name: req.body.name,
-      wa: req.body.wa,
-      title: req.body.title,
-      rank: req.body.rank,
-      score: req.body.score,
-      date: req.body.date,
+      name: name.trim(),
+      wa: wa.trim(),
+      title: title.trim(),
+      rank: rank || '',
+      score: score || '',
+      date: date || new Date().toISOString().split('T')[0],
       photo: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : ''
     };
+    
+    console.log('Saving winner for user:', userEmail);
+    console.log('Winner data:', winner);
+    console.log('Winners collection available:', !!winnersCollection);
+    
     await saveWinner(userEmail, winner);
+    
+    console.log('Winner saved successfully');
     res.json({ success: true, winner });
   } catch (error) {
     console.error('Error adding winner:', error);
@@ -583,21 +603,30 @@ app.put('/api/winners/:id', requireAuth, upload.single('photo'), async (req, res
   try {
     const userEmail = req.user.email;
     const winnerId = req.params.id;
+    const { name, wa, title, rank, score, date } = req.body || {};
+    
+    // Validate required fields
+    if (!name || !wa || !title) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Required fields missing: name, wa, title' 
+      });
+    }
     
     const winner = {
-      name: req.body.name,
-      wa: req.body.wa,
-      title: req.body.title,
-      rank: req.body.rank,
-      score: req.body.score,
-      date: req.body.date,
+      name: name.trim(),
+      wa: wa.trim(),
+      title: title.trim(),
+      rank: rank || '',
+      score: score || '',
+      date: date || new Date().toISOString().split('T')[0],
     };
     
     if (req.file) {
       winner.photo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
     
-    await updateWinner(winnerId, winner);
+    await updateWinner(userEmail, winnerId, winner);
     res.json({ success: true, winner });
   } catch (error) {
     console.error('Error updating winner:', error);
@@ -608,8 +637,9 @@ app.put('/api/winners/:id', requireAuth, upload.single('photo'), async (req, res
 // Delete winner
 app.delete('/api/winners/:id', requireAuth, async (req, res) => {
   try {
+    const userEmail = req.user.email;
     const winnerId = req.params.id;
-    await deleteWinner(winnerId);
+    await deleteWinner(userEmail, winnerId);
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting winner:', error);
